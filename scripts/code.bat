@@ -1,7 +1,7 @@
 @echo off
 setlocal
 
-title HackerCode Dev
+title VSCode Dev
 
 pushd %~dp0\..
 
