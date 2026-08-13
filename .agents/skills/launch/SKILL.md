@@ -1,13 +1,13 @@
 ---
 name: launch
-description: "Launch Code OSS (VS Code from sources) into an isolated throwaway profile with unique debug ports so you can drive it with @playwright/cli AND attach a Node debugger via dap-cli in the same session. Use when working on VS Code itself and you want to interact with the running workbench, automate chat or UI flows, test UI features, take screenshots, set breakpoints in the renderer / extension host / main process, or combine UI driving with debugging."
+description: "Launch HackerCode (VS Code from sources) into an isolated throwaway profile with unique debug ports so you can drive it with @playwright/cli AND attach a Node debugger via dap-cli in the same session. Use when working on VS Code itself and you want to interact with the running workbench, automate chat or UI flows, test UI features, take screenshots, set breakpoints in the renderer / extension host / main process, or combine UI driving with debugging."
 ---
 
-# Code OSS Dev - Launch + Debug
+# HackerCode Dev - Launch + Debug
 
 You're working on VS Code itself and you want to:
 
-1. Launch a Code OSS build from sources that is **already signed in** (Copilot, GitHub, etc.) so chat / agent flows work end-to-end.
+1. Launch a HackerCode build from sources that is **already signed in** (Copilot, GitHub, etc.) so chat / agent flows work end-to-end.
 2. Drive it with `@playwright/cli` over CDP (UI automation).
 3. Optionally attach a debugger via **dap-cli** to set breakpoints in the renderer, extension host, or main process.
 4. Run multiple instances at once without port conflicts.
@@ -27,8 +27,8 @@ The clone is **slim**: workspace storage, browser caches, file history, cached V
     ```
 - A VS Code checkout with `node_modules/` installed (`npm install` if missing — do **not** symlink from a sibling worktree; that breaks builds in subtle ways).
 - A VS Code checkout with sources built. Run `npm run compile` once (one-shot) or `npm run watch` for incremental rebuilds. Both build the full client **and** all built-in extensions under `extensions/`. You must build the full product to run successfully, building just the client is not enough.
-- An **authenticated** Code OSS profile to seed from. By default the launcher uses `~/.vscode-oss-dev` on macOS/Linux or `$env:USERPROFILE\.vscode-oss-dev` on Windows, which is the user-data-dir the repo's `launch.json` configs use - if the user has ever signed in to Copilot in a dev build, this should work. Only pass `--source-user-data-dir <path>` (or set `$CODE_OSS_DEV_AUTHED_USER_DATA_DIR`) when you specifically want to seed from a different profile (e.g. your regular `~/Library/Application Support/Code` install).
-  - If Code OSS launches and needs a sign-in, don't give up! Use the questions tool to ask the user to sign in.
+- An **authenticated** HackerCode profile to seed from. By default the launcher uses `~/.hackercode-dev` on macOS/Linux or `$env:USERPROFILE\.hackercode-dev` on Windows, which is the user-data-dir the repo's `launch.json` configs use - if the user has ever signed in to Copilot in a dev build, this should work. Only pass `--source-user-data-dir <path>` (or set `$HACKERCODE_DEV_AUTHED_USER_DATA_DIR`) when you specifically want to seed from a different profile (e.g. your regular `~/Library/Application Support/Code` install).
+  - If HackerCode launches and needs a sign-in, don't give up! Use the questions tool to ask the user to sign in.
 - `@playwright/cli` available (it's a devDependency in the vscode repo - `npm install` then use `npx @playwright/cli`).
 - For debugger work: `dap-cli` on `PATH`. If debugger support would be useful but the `dap-cli` skill is not present, prompt the user to install it from https://github.com/roblourens/dap-cli.
 - CSS selectors are internal implementation details. If a selector-based `eval` stops working, take a fresh `snapshot`, inspect the current DOM, and update the selector rather than assuming an old one still applies.
@@ -91,7 +91,7 @@ Excluded (transient, regenerable, or known-not-needed):
 
 > If the launched window says "language model unavailable" or otherwise looks unauthed, ask the user to sign in.
 
-The script runs pre-launch (electron download, compile-if-missing, built-in extensions) **in the foreground**, then starts Code OSS detached and **blocks until the renderer's CDP endpoint is responding** (up to ~90s) before printing the JSON line on stdout. If anything fails — preLaunch errors, code.sh exits early, CDP never opens — the script exits non-zero and dumps the relevant log tail to stderr.
+The script runs pre-launch (electron download, compile-if-missing, built-in extensions) **in the foreground**, then starts HackerCode detached and **blocks until the renderer's CDP endpoint is responding** (up to ~90s) before printing the JSON line on stdout. If anything fails — preLaunch errors, code.sh exits early, CDP never opens — the script exits non-zero and dumps the relevant log tail to stderr.
 
 ```json
 {"pid":12345,"cdpPort":53111,"extHostPort":53112,"mainPort":53113,"agentHostPort":53114,"userDataDir":".../user-data","extensionsDir":".../extensions","sharedDataDir":".../shared-data","runDir":"...","logFile":".../code.log","repo":"...","agents":false}
@@ -160,7 +160,7 @@ npx @playwright/cli -s=$PW_SESSION snapshot
 
 If a target looks stale after relaunching, run `npx @playwright/cli -s=$PW_SESSION close`, attach again with `$CDP`, and re-check `tab-list`.
 
-### Focusing the chat input (works on Code OSS, including the Agents window)
+### Focusing the chat input (works on HackerCode, including the Agents window)
 
 ```bash
 # macOS
@@ -171,7 +171,7 @@ npx @playwright/cli -s=$PW_SESSION press Control+Alt+i
 
 ### Typing into Monaco (chat input, editors)
 
-`fill` and `type` **silently fail** on Code OSS — Monaco's `native-edit-context` element doesn't react to Playwright's default input pipeline. Use one of these alternatives:
+`fill` and `type` **silently fail** on HackerCode — Monaco's `native-edit-context` element doesn't react to Playwright's default input pipeline. Use one of these alternatives:
 
 - **`scripts/monaco-paste.sh` helper** (recommended — fast, no system clipboard, parallel-safe). Reads text from a positional arg or stdin and dispatches a `ClipboardEvent('paste')` with a `DataTransfer` payload into the focused chat-input Monaco editor. Honors `--session NAME` or `$PW_SESSION` env so it stays inside the same `-s=` session as everything else.
 
@@ -225,7 +225,7 @@ The focus shortcut should leave `document.activeElement` on VS Code's `native-ed
 
 ### Parallel multi-instance pattern
 
-Because the launch skill is built around isolation, the natural workload is **many agents on one machine, each driving their own Code OSS**. The pattern boils down to giving each agent a unique `PW_SESSION` and passing it everywhere:
+Because the launch skill is built around isolation, the natural workload is **many agents on one machine, each driving their own HackerCode**. The pattern boils down to giving each agent a unique `PW_SESSION` and passing it everywhere:
 
 ```bash
 # In agent A's shell:
@@ -243,9 +243,9 @@ npx @playwright/cli -s=$PW_SESSION attach --cdp=http://127.0.0.1:$CDP
 "$PASTE" "prompt for B"
 ```
 
-Each agent gets its own `cliDaemon` bound to its own CDP, so the pastes / clicks / snapshots don't cross-contaminate. Verified live with two concurrent instances. **macOS Mach-ports caveat:** on macOS, beyond ~2–3 concurrent Code OSS instances Crashpad's exception handler tends to die with `mach_port_request_notification: invalid capability`. That's a separate, OS-level limit; it's not affected by the session name.
+Each agent gets its own `cliDaemon` bound to its own CDP, so the pastes / clicks / snapshots don't cross-contaminate. Verified live with two concurrent instances. **macOS Mach-ports caveat:** on macOS, beyond ~2–3 concurrent HackerCode instances Crashpad's exception handler tends to die with `mach_port_request_notification: invalid capability`. That's a separate, OS-level limit; it's not affected by the session name.
 
-> **Cleanup for `cliDaemon` processes:** stop your session's daemon with `npx @playwright/cli -s=$PW_SESSION close`, or nuke all stale daemons (after killing all the Code OSS windows) with `npx @playwright/cli kill-all`. Session daemons live under `~/Library/Caches/ms-playwright/daemon/<hash>/`.
+> **Cleanup for `cliDaemon` processes:** stop your session's daemon with `npx @playwright/cli -s=$PW_SESSION close`, or nuke all stale daemons (after killing all the HackerCode windows) with `npx @playwright/cli kill-all`. Session daemons live under `~/Library/Caches/ms-playwright/daemon/<hash>/`.
 
 ### Agents window selector differences
 
@@ -323,13 +323,13 @@ You can run `@playwright/cli` and `dap-cli` against the **same window simultaneo
 
 ## Multiple instances
 
-Every launch picks fresh ports and a fresh temp `runDir`, so you can run as many concurrent Code OSS windows as your machine can handle. Each one's ports come back in its own JSON blob - keep them separate.
+Every launch picks fresh ports and a fresh temp `runDir`, so you can run as many concurrent HackerCode windows as your machine can handle. Each one's ports come back in its own JSON blob - keep them separate.
 
-The launcher also passes `--shared-data-dir=<runDir>/shared-data`. This is **required** for multi-instance isolation: Code OSS keeps a fixed-path SQLite DB at `~/.<dataFolderName>-shared/sharedStorage/state.vscdb` that is *not* covered by `--user-data-dir`. Without overriding it, two concurrent instances would fight over the same file and one would die with "shared background process terminated unexpectedly". Each launch gets its own `shared-data` dir.
+The launcher also passes `--shared-data-dir=<runDir>/shared-data`. This is **required** for multi-instance isolation: HackerCode keeps a fixed-path SQLite DB at `~/.<dataFolderName>-shared/sharedStorage/state.vscdb` that is *not* covered by `--user-data-dir`. Without overriding it, two concurrent instances would fight over the same file and one would die with "shared background process terminated unexpectedly". Each launch gets its own `shared-data` dir.
 
 ## Restart after source changes
 
-Workbench code is loaded when the Code OSS window starts; source changes are not hot-reloaded into an already-running instance. After the build output is current, kill the launched process, launch again, and reattach to the new `cdpPort` from the new JSON blob.
+Workbench code is loaded when the HackerCode window starts; source changes are not hot-reloaded into an already-running instance. After the build output is current, kill the launched process, launch again, and reattach to the new `cdpPort` from the new JSON blob.
 
 ```bash
 kill "$PID" 2>/dev/null || true
@@ -354,7 +354,7 @@ npx @playwright/cli -s=$PW_SESSION close
 # Or nuke any stale daemons left behind by crashed callers across all sessions:
 # npx @playwright/cli kill-all
 
-# Kill the Code OSS instance
+# Kill the HackerCode instance
 kill "$PID" 2>/dev/null || true
 # Or by port if you've lost the pid:
 pids=$(lsof -t -i :$CDP); [ -n "$pids" ] && kill $pids
@@ -363,11 +363,11 @@ pids=$(lsof -t -i :$CDP); [ -n "$pids" ] && kill $pids
 rm -rf "$(dirname "$LOG")"
 ```
 
-Code OSS is a full Electron app and easily eats 1-4 GB. Always clean up.
+HackerCode is a full Electron app and easily eats 1-4 GB. Always clean up.
 
 ## Troubleshooting
 
-- **"Sent env to running instance. Terminating..."** - The dynamic `--user-data-dir` should prevent this. If you see it, another Code OSS is using the same profile path; pass `--source-user-data-dir` to a different source or check that the temp copy actually happened (`ls "$(jq -r .userDataDir <<<"$INFO")"`).
+- **"Sent env to running instance. Terminating..."** - The dynamic `--user-data-dir` should prevent this. If you see it, another HackerCode instance is using the same profile path; pass `--source-user-data-dir` to a different source or check that the temp copy actually happened (`ls "$(jq -r .userDataDir <<<"$INFO")"`).
 - **Renderer ESM errors / `import { Menu } from 'electron'`** - `ELECTRON_RUN_AS_NODE` is set in your env. The launcher unsets it for the child, but if you spawn `code.sh` yourself, do the same.
 - **Built-in extension fails to load (`Cannot find module .../extensions/.../out/extension.js`)** - extensions weren't compiled. Run `npm run compile` (one-shot, also rebuilds all built-in extensions) or `npm run watch` (incremental). A common cause: you ran `npm run transpile-client` to satisfy unit tests, which populated `out/` but not `extensions/*/out/`, so preLaunch's "is `out/` missing?" check skipped the compile.
 - **`launch.sh` exits non-zero with a log tail** - either pre-launch failed, `code.sh` died before CDP came up, or CDP never opened within 90s. The tail printed to stderr is from `runDir/code.log` - read it to diagnose.

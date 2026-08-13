@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Launch Code OSS (VS Code from sources) with:
+# Launch HackerCode (VS Code from sources) with:
 #   - a fresh, slimmed copy of the authenticated user-data-dir (so Copilot/GitHub auth works)
-#   - an isolated --shared-data-dir (otherwise two instances share ~/.vscode-oss-shared and crash each other)
+#   - an isolated --shared-data-dir (otherwise two instances share ~/.hackercode-shared and crash each other)
 #   - unique debug ports for renderer (CDP), extension host, main process, and agent host
 #
 # Auth on macOS comes from the OS keychain (per-app, shared automatically) plus
@@ -23,14 +23,14 @@
 #                       slim copy is missing something you need.
 #
 # Defaults:
-#   --source-user-data-dir  $CODE_OSS_DEV_AUTHED_USER_DATA_DIR  (else ~/.vscode-oss-dev)
+#   --source-user-data-dir  $HACKERCODE_DEV_AUTHED_USER_DATA_DIR  (else ~/.hackercode-dev)
 #   --repo                  $PWD if it looks like a vscode checkout; otherwise pass it explicitly
 
 set -euo pipefail
 umask 077
 
 AGENTS=0
-SOURCE_UDD="${CODE_OSS_DEV_AUTHED_USER_DATA_DIR:-$HOME/.vscode-oss-dev}"
+SOURCE_UDD="${HACKERCODE_DEV_AUTHED_USER_DATA_DIR:-$HOME/.hackercode-dev}"
 REPO=""
 EXTRA_ARGS=()
 CLONE_EXTENSIONS=0
@@ -59,7 +59,7 @@ fi
 
 if [[ ! -d "$SOURCE_UDD" ]]; then
 	echo "Source user-data-dir does not exist: $SOURCE_UDD" >&2
-	echo "Pass --source-user-data-dir <path> or set CODE_OSS_DEV_AUTHED_USER_DATA_DIR." >&2
+	echo "Pass --source-user-data-dir <path> or set HACKERCODE_DEV_AUTHED_USER_DATA_DIR." >&2
 	exit 2
 fi
 
@@ -77,7 +77,7 @@ MAIN_PORT=$(pick_port)
 AGENTHOST_PORT=$(pick_port)
 
 STAMP=$(date +%Y%m%d-%H%M%S)-$$
-RUN_DIR="${TMPDIR:-/tmp}/code-oss-dev/$STAMP"
+RUN_DIR="${TMPDIR:-/tmp}/hackercode-dev/$STAMP"
 DEST_UDD="$RUN_DIR/user-data"
 SHARED_DATA_DIR="$RUN_DIR/shared-data"
 mkdir -p "$DEST_UDD" "$SHARED_DATA_DIR"
@@ -198,7 +198,7 @@ unset ELECTRON_RUN_AS_NODE
 
 CODE_SH="$REPO/scripts/code.sh"
 if [[ ! -x "$CODE_SH" ]]; then
-	echo "Could not find an executable Code OSS launcher at $CODE_SH. Pass --repo <vscode-repo-root>." >&2
+	echo "Could not find an executable HackerCode launcher at $CODE_SH. Pass --repo <vscode-repo-root>." >&2
 	exit 2
 fi
 

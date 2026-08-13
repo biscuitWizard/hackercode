@@ -44,6 +44,7 @@ import './services/lifecycle/electron-browser/lifecycleService.js';
 import './services/title/electron-browser/titleService.js';
 import './services/host/electron-browser/nativeHostService.js';
 import '../platform/meteredConnection/electron-browser/meteredConnectionService.js';
+import '../platform/hackercode/electron-browser/hackerCodeControlService.js';
 import './services/request/electron-browser/requestService.js';
 import './services/clipboard/electron-browser/clipboardService.js';
 import './services/contextmenu/electron-browser/contextmenuService.js';
@@ -174,6 +175,9 @@ import './contrib/splash/electron-browser/splash.contribution.js';
 
 // Local History
 import './contrib/localHistory/electron-browser/localHistory.contribution.js';
+
+// HackerCode
+import './contrib/hackercode/browser/hackercode.contribution.js';
 
 // Merge Editor
 import './contrib/mergeEditor/electron-browser/mergeEditor.contribution.js';

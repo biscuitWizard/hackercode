@@ -22,8 +22,8 @@
 				"command": ".\\scripts\\code.bat"
 			},
 			"args": [
-				"--user-data-dir=${workspaceFolder}/.profile-oss",
-				"--extensions-dir=${workspaceFolder}/.profile-oss/extensions"
+				"--user-data-dir=${workspaceFolder}/.profile-hackercode",
+				"--extensions-dir=${workspaceFolder}/.profile-hackercode/extensions"
 			],
 			"inAgents": true,
 			"problemMatcher": []
@@ -382,8 +382,8 @@
 			},
 			"args": [
 				"--agents",
-				"--user-data-dir=${userHome}/.vscode-oss-dev",
-				"--extensions-dir=${userHome}/.vscode-oss-dev/extensions"
+				"--user-data-dir=${userHome}/.hackercode-dev",
+				"--extensions-dir=${userHome}/.hackercode-dev/extensions"
 			],
 			"problemMatcher": []
 		},
@@ -403,7 +403,7 @@
 			"problemMatcher": []
 		},
 		{
-			"label": "Run and Compile Code - OSS",
+			"label": "Run and Compile HackerCode",
 			"dependsOn": [
 				"Transpile Client",
 				"Run Dev"

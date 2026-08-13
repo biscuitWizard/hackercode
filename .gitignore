@@ -20,7 +20,7 @@ test-results/
 test-results.xml
 vscode.lsif
 vscode.db
-/.profile-oss
+/.profile-hackercode
 /cli/target
 /cli/openssl
 product.overrides.json
@@ -50,7 +50,7 @@ dist
 .agents/skills/.local/
 .github/skills/.local/
 
-# Throwaway Code OSS dev profiles created by the launch skill
+# Throwaway HackerCode dev profiles created by the launch skill
 .v[0-9]*/
 # Local agent validation evidence
 .agent-validation/

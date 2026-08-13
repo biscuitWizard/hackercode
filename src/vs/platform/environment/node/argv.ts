@@ -221,6 +221,9 @@ export const OPTIONS: OptionDescriptions<Required<NativeParsedArgs>> = {
 	'enable-rdp-display-tracking': { type: 'boolean' },
 	'disable-layout-restore': { type: 'boolean' },
 	'disable-experiments': { type: 'boolean' },
+	'hackercode-safe-mode': { type: 'boolean', cat: 't', description: localize('hackercodeSafeMode', "Start HackerCode with the pristine revision and quarantine the active revision.") },
+	'hackercode-control': { type: 'boolean', cat: 't', description: localize('hackercodeControl', "Enable the HackerCode control endpoint.") },
+	'hackercode-destructive-recovery-test': { type: 'boolean', description: localize('hackercodeDestructiveRecoveryTest', "Development only: suppress the HackerCode frozen-renderer dialog so the boot watchdog can be tested.") },
 
 	// chromium flags
 	'no-proxy-server': { type: 'boolean' },

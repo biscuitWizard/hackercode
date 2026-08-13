@@ -7,12 +7,13 @@
 // Uses plain JSON serialization — URIs are string-typed in the protocol.
 
 import { Emitter } from '../../../base/common/event.js';
+import type { JsonRpcMessage as BaseJsonRpcMessage } from '../../../base/common/jsonRpcProtocol.js';
 import { Disposable } from '../../../base/common/lifecycle.js';
 import { connectionTokenQueryName } from '../../../base/common/network.js';
 import { IInstantiationService } from '../../instantiation/common/instantiation.js';
 import { AhpJsonlLogger, getAhpLogByteLength, IAhpJsonlLoggerOptions } from '../common/ahpJsonlLogger.js';
 import { AgentHostClientConnectionKind } from '../common/agentHostTelemetry.js';
-import type { AhpServerNotification, JsonRpcNotification, JsonRpcRequest, JsonRpcResponse, ProtocolMessage } from '../common/state/sessionProtocol.js';
+import type { AhpServerNotification, JsonRpcNotification, JsonRpcParseErrorResponse, JsonRpcRequest, JsonRpcResponse, ProtocolMessage } from '../common/state/sessionProtocol.js';
 import type { IClientTransport } from '../common/state/sessionTransport.js';
 import { MALFORMED_FRAMES_FORCE_CLOSE_THRESHOLD, MALFORMED_FRAMES_LOG_CAP } from '../common/transportConstants.js';
 
@@ -177,7 +178,7 @@ export class WebSocketClientTransport extends Disposable implements IClientTrans
 	 * transport is force-closed so reconnection is triggered immediately
 	 * rather than silently losing messages.
 	 */
-	send(message: ProtocolMessage | AhpServerNotification | JsonRpcNotification | JsonRpcResponse | JsonRpcRequest): boolean {
+	send(message: ProtocolMessage | AhpServerNotification | BaseJsonRpcMessage | JsonRpcNotification | JsonRpcResponse | JsonRpcParseErrorResponse | JsonRpcRequest): boolean {
 		if (this._ws?.readyState === WebSocket.OPEN) {
 			const text = JSON.stringify(message);
 			this._ahpLogger?.log(message, 'c2s', getAhpLogByteLength(text));

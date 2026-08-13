@@ -50,6 +50,9 @@ import { AccessibleViewRegistry } from '../../platform/accessibility/browser/acc
 import { NotificationAccessibleView } from './parts/notifications/notificationAccessibleView.js';
 import { IMarkdownRendererService } from '../../platform/markdown/browser/markdownRenderer.js';
 import { EditorMarkdownCodeBlockRenderer } from '../../editor/browser/widget/markdownRenderer/browser/editorMarkdownCodeBlockRenderer.js';
+import { IEnvironmentService } from '../../platform/environment/common/environment.js';
+import { installHackerCodeRuntime, isHackerCodeRuntimeEnabled } from '../../platform/hackercode/browser/hackerCodeRuntime.js';
+import { enableHotReload } from '../../base/common/hotReload.js';
 
 export interface IWorkbenchOptions {
 
@@ -136,6 +139,15 @@ export class Workbench extends Layout {
 
 			// Services
 			const instantiationService = this.initServices(this.serviceCollection);
+
+			// Intentionally expose this privileged debug/control surface only in development or when explicitly enabled.
+			instantiationService.invokeFunction(accessor => {
+				const environmentService = accessor.get(IEnvironmentService);
+				if (isHackerCodeRuntimeEnabled(environmentService)) {
+					enableHotReload();
+					installHackerCodeRuntime(instantiationService);
+				}
+			});
 
 			instantiationService.invokeFunction(accessor => {
 				const lifecycleService = accessor.get(ILifecycleService);

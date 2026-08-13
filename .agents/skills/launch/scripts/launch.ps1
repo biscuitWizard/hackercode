@@ -1,4 +1,4 @@
-# Launch Code OSS (VS Code from sources) with an isolated, slimmed copy of a
+# Launch HackerCode (VS Code from sources) with an isolated, slimmed copy of a
 # user-data-dir and unique debugger ports. Prints exactly one JSON line to
 # stdout after the renderer CDP endpoint is ready; all diagnostics use stderr.
 
@@ -421,18 +421,18 @@ try {
 
 	$codeBat = Join-Path $repo 'scripts\code.bat'
 	if (-not (Test-Path -LiteralPath $codeBat -PathType Leaf)) {
-		Exit-Usage "Could not find a Code OSS launcher at $codeBat. Pass --repo <vscode-repo-root>."
+		Exit-Usage "Could not find a HackerCode launcher at $codeBat. Pass --repo <vscode-repo-root>."
 	}
 
 	if ([string]::IsNullOrWhiteSpace($sourceUserDataDir)) {
-		$sourceUserDataDir = if ($env:CODE_OSS_DEV_AUTHED_USER_DATA_DIR) {
-			$env:CODE_OSS_DEV_AUTHED_USER_DATA_DIR
+		$sourceUserDataDir = if ($env:HACKERCODE_DEV_AUTHED_USER_DATA_DIR) {
+			$env:HACKERCODE_DEV_AUTHED_USER_DATA_DIR
 		} else {
-			Join-Path $env:USERPROFILE '.vscode-oss-dev'
+			Join-Path $env:USERPROFILE '.hackercode-dev'
 		}
 	}
 	if (-not (Test-Path -LiteralPath $sourceUserDataDir -PathType Container)) {
-		Exit-Usage "Source user-data-dir does not exist: $sourceUserDataDir`nPass --source-user-data-dir <path> or set CODE_OSS_DEV_AUTHED_USER_DATA_DIR."
+		Exit-Usage "Source user-data-dir does not exist: $sourceUserDataDir`nPass --source-user-data-dir <path> or set HACKERCODE_DEV_AUTHED_USER_DATA_DIR."
 	}
 	$sourceUserDataDir = [IO.Path]::GetFullPath($sourceUserDataDir)
 
@@ -445,7 +445,7 @@ try {
 	$agentHostPort = $ports[3]
 
 	$stamp = '{0:yyyyMMdd-HHmmss}-{1}' -f (Get-Date), $PID
-	$runDir = Join-Path (Join-Path $env:TEMP 'code-oss-dev') $stamp
+	$runDir = Join-Path (Join-Path $env:TEMP 'hackercode-dev') $stamp
 	$destinationUdd = Join-Path $runDir 'user-data'
 	$extensionsDir = Join-Path $destinationUdd 'extensions'
 	$sharedDataDir = Join-Path $runDir 'shared-data'
@@ -455,7 +455,7 @@ try {
 	$hasGitHubAuthenticationSecret = Test-SourceHasGitHubAuthenticationSecret $node $sourceUserDataDir (Join-Path $runDir 'auth-preflight.vscdb')
 	if ($hasGitHubAuthenticationSecret -eq $false) {
 		Write-LaunchError "[launch.ps1] WARNING: source profile $sourceUserDataDir has no stored GitHub session; the launched instance will prompt you to sign in."
-		Write-LaunchError 'To fix once and for all, launch Code OSS directly against the source profile (no copy), sign in, then close it:'
+		Write-LaunchError 'To fix once and for all, launch HackerCode directly against the source profile (no copy), sign in, then close it:'
 		Write-LaunchError "  .\scripts\code.bat --user-data-dir=$sourceUserDataDir"
 		Write-LaunchError 'Every future launch copies that profile and inherits the session.'
 	}

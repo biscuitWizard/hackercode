@@ -271,12 +271,12 @@
 			"runtimeArgs": [
 				"--inspect-brk=5875",
 				"--no-cached-data",
-				"--crash-reporter-directory=${workspaceFolder}/.profile-oss/crashes",
+				"--crash-reporter-directory=${workspaceFolder}/.profile-hackercode/crashes",
 				// for general runtime freezes: https://github.com/microsoft/vscode/issues/127861#issuecomment-904144910
 				"--disable-features=CalculateNativeWinOcclusion",
 				"--disable-extension=vscode.vscode-api-tests"
 			],
-			"userDataDir": "${userHome}/.vscode-oss-dev",
+			"userDataDir": "${userHome}/.hackercode-dev",
 			"webRoot": "${workspaceFolder}",
 			"cascadeTerminateToConfigurations": [
 				"Attach to Extension Host"
@@ -316,13 +316,13 @@
 			"runtimeArgs": [
 				"--inspect-brk=5875",
 				"--no-cached-data",
-				"--crash-reporter-directory=${workspaceFolder}/.profile-oss/crashes",
+				"--crash-reporter-directory=${workspaceFolder}/.profile-hackercode/crashes",
 				// for general runtime freezes: https://github.com/microsoft/vscode/issues/127861#issuecomment-904144910
 				"--disable-features=CalculateNativeWinOcclusion",
 				"--disable-extension=vscode.vscode-api-tests",
 				"--agents"
 			],
-			"userDataDir": "${userHome}/.vscode-oss-dev",
+			"userDataDir": "${userHome}/.hackercode-dev",
 			"webRoot": "${workspaceFolder}",
 			"cascadeTerminateToConfigurations": [
 				"Attach to Extension Host"
@@ -365,12 +365,12 @@
 			"runtimeArgs": [
 				"--inspect-brk=5875",
 				"--no-cached-data",
-				"--crash-reporter-directory=${workspaceFolder}/.profile-oss/crashes",
+				"--crash-reporter-directory=${workspaceFolder}/.profile-hackercode/crashes",
 				// for general runtime freezes: https://github.com/microsoft/vscode/issues/127861#issuecomment-904144910
 				"--disable-features=CalculateNativeWinOcclusion",
 				"--disable-extension=vscode.vscode-api-tests"
 			],
-			"userDataDir": "${userHome}/.vscode-oss-dev",
+			"userDataDir": "${userHome}/.hackercode-dev",
 			"webRoot": "${workspaceFolder}",
 			"cascadeTerminateToConfigurations": [
 				"Attach to Extension Host"
@@ -578,12 +578,12 @@
 			"request": "launch",
 			"name": "Run Unit Tests",
 			"program": "${workspaceFolder}/test/unit/electron/index.js",
-			"runtimeExecutable": "${workspaceFolder}/.build/electron/Code - OSS.app/Contents/MacOS/Code - OSS",
+			"runtimeExecutable": "${workspaceFolder}/.build/electron/HackerCode.app/Contents/MacOS/HackerCode",
 			"windows": {
-				"runtimeExecutable": "${workspaceFolder}/.build/electron/Code - OSS.exe"
+				"runtimeExecutable": "${workspaceFolder}/.build/electron/HackerCode.exe"
 			},
 			"linux": {
-				"runtimeExecutable": "${workspaceFolder}/.build/electron/code-oss"
+				"runtimeExecutable": "${workspaceFolder}/.build/electron/hackercode"
 			},
 			"outputCapture": "std",
 			"args": [
@@ -608,12 +608,12 @@
 			"request": "launch",
 			"name": "Run Unit Tests For Current File",
 			"program": "${workspaceFolder}/test/unit/electron/index.js",
-			"runtimeExecutable": "${workspaceFolder}/.build/electron/Code - OSS.app/Contents/MacOS/Code - OSS",
+			"runtimeExecutable": "${workspaceFolder}/.build/electron/HackerCode.app/Contents/MacOS/HackerCode",
 			"windows": {
-				"runtimeExecutable": "${workspaceFolder}/.build/electron/Code - OSS.exe"
+				"runtimeExecutable": "${workspaceFolder}/.build/electron/HackerCode.exe"
 			},
 			"linux": {
-				"runtimeExecutable": "${workspaceFolder}/.build/electron/code-oss"
+				"runtimeExecutable": "${workspaceFolder}/.build/electron/hackercode"
 			},
 			"cascadeTerminateToConfigurations": [
 				"Attach to VS Code"
@@ -644,7 +644,7 @@
 			"timeout": 240000,
 			"args": [
 				"-l",
-				"${workspaceFolder}/.build/electron/Code - OSS.app/Contents/MacOS/Code - OSS"
+				"${workspaceFolder}/.build/electron/HackerCode.app/Contents/MacOS/HackerCode"
 			],
 			"outFiles": [
 				"${cwd}/out/**/*.js"

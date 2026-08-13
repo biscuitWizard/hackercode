@@ -296,6 +296,9 @@ const desktopResourcePatterns = [
 	'vs/workbench/browser/parts/editor/media/*.png',
 	'vs/workbench/contrib/debug/browser/media/*.png',
 
+	// HackerCode promoted built-in patch layer
+	'vs/workbench/contrib/hackercode/browser/promoted/**',
+
 	// Sessions - built-in prompts and skills
 	'vs/sessions/prompts/*.prompt.md',
 	'vs/sessions/skills/**/SKILL.md',

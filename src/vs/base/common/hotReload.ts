@@ -6,9 +6,15 @@
 import { IDisposable } from './lifecycle.js';
 
 let _isHotReloadEnabled = false;
+let defaultHandlerRegistered = false;
 
-export function enableHotReload() {
+export function enableHotReload(): void {
 	_isHotReloadEnabled = true;
+	const handlers = registerGlobalHotReloadHandler();
+	if (!defaultHandlerRegistered) {
+		defaultHandlerRegistered = true;
+		handlers.add(patchPrototypeHotReloadHandler);
+	}
 }
 
 export function isHotReloadEnabled(): boolean {
@@ -83,37 +89,37 @@ interface GlobalThisAddition {
 
 type AcceptNewExportsFn = (newExports: Record<string, unknown>) => boolean;
 
-if (isHotReloadEnabled()) {
-	// This code does not run in production.
-	registerHotReloadHandler(({ oldExports, newSrc, config }) => {
-		if (config.mode !== 'patch-prototype') {
-			return undefined;
-		}
+function hasPrototype(value: unknown): value is Function & { prototype: object } {
+	return typeof value === 'function' && typeof value.prototype === 'object' && value.prototype !== null;
+}
 
-		return newExports => {
-			for (const key in newExports) {
-				const exportedItem = newExports[key];
-				console.log(`[hot-reload] Patching prototype methods of '${key}'`, { exportedItem });
-				if (typeof exportedItem === 'function' && exportedItem.prototype) {
-					const oldExportedItem = oldExports[key];
-					if (oldExportedItem) {
-						for (const prop of Object.getOwnPropertyNames(exportedItem.prototype)) {
-							const descriptor = Object.getOwnPropertyDescriptor(exportedItem.prototype, prop)!;
-							// eslint-disable-next-line local/code-no-any-casts
-							const oldDescriptor = Object.getOwnPropertyDescriptor((oldExportedItem as any).prototype, prop);
+function patchPrototypeHotReloadHandler({ oldExports, config }: Parameters<HotReloadHandler>[0]): AcceptNewExportsHandler | undefined {
+	if (config.mode !== 'patch-prototype') {
+		return undefined;
+	}
 
-							if (descriptor?.value?.toString() !== oldDescriptor?.value?.toString()) {
-								console.log(`[hot-reload] Patching prototype method '${key}.${prop}'`);
-							}
-
-							// eslint-disable-next-line local/code-no-any-casts
-							Object.defineProperty((oldExportedItem as any).prototype, prop, descriptor);
-						}
-						newExports[key] = oldExportedItem;
+	return newExports => {
+		for (const key in newExports) {
+			const exportedItem = newExports[key];
+			console.log(`[hot-reload] Patching prototype methods of '${key}'`, { exportedItem });
+			const oldExportedItem = oldExports[key];
+			if (hasPrototype(exportedItem) && hasPrototype(oldExportedItem)) {
+				for (const prop of Object.getOwnPropertyNames(exportedItem.prototype)) {
+					const descriptor = Object.getOwnPropertyDescriptor(exportedItem.prototype, prop);
+					const oldDescriptor = Object.getOwnPropertyDescriptor(oldExportedItem.prototype, prop);
+					if (!descriptor) {
+						continue;
 					}
+
+					if (descriptor.value?.toString() !== oldDescriptor?.value?.toString()) {
+						console.log(`[hot-reload] Patching prototype method '${key}.${prop}'`);
+					}
+
+					Object.defineProperty(oldExportedItem.prototype, prop, descriptor);
 				}
+				newExports[key] = oldExportedItem;
 			}
-			return true;
-		};
-	});
+		}
+		return true;
+	};
 }

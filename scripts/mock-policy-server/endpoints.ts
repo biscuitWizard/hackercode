@@ -33,7 +33,7 @@ export interface EndpointDef {
 	id: string;
 	/** Human label for the GUI tab. */
 	label: string;
-	/** URL path the server serves / Code OSS calls. */
+	/** URL path the server serves / HackerCode calls. */
 	path: string;
 	/** Key under product.json `defaultChatAgent`. */
 	productKey: string;

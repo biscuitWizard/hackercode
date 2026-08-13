@@ -475,11 +475,14 @@
 		const TOGGLE_DEV_TOOLS_KB = (safeProcess.platform === 'darwin' ? 'meta-alt-73' : 'ctrl-shift-73'); // mac: Cmd-Alt-I, rest: Ctrl-Shift-I
 		const TOGGLE_DEV_TOOLS_KB_ALT = '123'; // F12
 		const RELOAD_KB = (safeProcess.platform === 'darwin' ? 'meta-82' : 'ctrl-82'); // mac: Cmd-R, rest: Ctrl-R
+		const HACKERCODE_SAFE_MODE_KB = (safeProcess.platform === 'darwin' ? 'meta-alt-shift-82' : 'ctrl-alt-shift-82'); // mac: Cmd-Shift-Alt-R, rest: Ctrl-Shift-Alt-R
 
 		let listener: ((e: KeyboardEvent) => void) | undefined = function (e) {
 			const key = extractKey(e);
 			if (key === TOGGLE_DEV_TOOLS_KB || key === TOGGLE_DEV_TOOLS_KB_ALT) {
 				ipcRenderer.send('vscode:toggleDevTools');
+			} else if (key === HACKERCODE_SAFE_MODE_KB) {
+				ipcRenderer.send('vscode:hackercodeSafeMode');
 			} else if (key === RELOAD_KB && !disallowReloadKeybinding) {
 				ipcRenderer.send('vscode:reloadWindow');
 			}

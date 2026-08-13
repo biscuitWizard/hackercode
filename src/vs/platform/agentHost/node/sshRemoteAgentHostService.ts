@@ -2025,7 +2025,7 @@ export class SSHRemoteAgentHostMainService extends Disposable implements ISSHRem
 	}
 
 	private get _serverDataFolderName(): string {
-		return this._productService.serverDataFolderName ?? '.vscode-server-oss';
+		return this._productService.serverDataFolderName ?? '.hackercode-server';
 	}
 
 	private get _commit(): string | undefined {

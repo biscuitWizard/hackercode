@@ -42,7 +42,7 @@
 	"files.exclude": {
 		".git": true,
 		".build": true,
-		".profile-oss": true,
+		".profile-hackercode": true,
 		"**/*.tsbuildinfo": true,
 		"**/.DS_Store": true,
 		".vscode-test": true,

@@ -1,11 +1,15 @@
-# Visual Studio Code - Open Source ("Code - OSS")
+# HackerCode
 [![Feature Requests](https://img.shields.io/github/issues/microsoft/vscode/feature-request.svg)](https://github.com/microsoft/vscode/issues?q=is%3Aopen+is%3Aissue+label%3Afeature-request+sort%3Areactions-%2B1-desc)
 [![Bugs](https://img.shields.io/github/issues/microsoft/vscode/bug.svg)](https://github.com/microsoft/vscode/issues?utf8=✓&q=is%3Aissue+is%3Aopen+label%3Abug)
 [![Gitter](https://img.shields.io/badge/chat-on%20gitter-yellow.svg)](https://gitter.im/Microsoft/vscode)
 
 ## The Repository
 
-This repository ("`Code - OSS`") is where we (Microsoft) develop the [Visual Studio Code](https://code.visualstudio.com) product together with the community. Not only do we work on code and issues here, but we also publish our [roadmap](https://github.com/microsoft/vscode/wiki/Roadmap), [monthly iteration plans](https://github.com/microsoft/vscode/wiki/Iteration-Plans), and our [endgame plans](https://github.com/microsoft/vscode/wiki/Running-the-Endgame). This source code is available to everyone under the standard [MIT license](https://github.com/microsoft/vscode/blob/main/LICENSE.txt).
+HackerCode is a fork of the [`Code - OSS`](https://github.com/microsoft/vscode) source distribution. The upstream project is developed by Microsoft and the community, with its [roadmap](https://github.com/microsoft/vscode/wiki/Roadmap), [monthly iteration plans](https://github.com/microsoft/vscode/wiki/Iteration-Plans), and [endgame plans](https://github.com/microsoft/vscode/wiki/Running-the-Endgame) published publicly. This source code remains available under the standard [MIT license](https://github.com/microsoft/vscode/blob/main/LICENSE.txt).
+
+## HackerCode Runtime Patches
+
+This fork includes a privileged desktop foundation for content-addressed JavaScript ESM runtime patches, revision selection, authenticated local control, recovery, refresh, and source-checkout promotion. It is a foundation rather than an implemented agent workflow. See the [HackerCode runtime patch documentation](docs/hackercode/README.md) for architecture, security limitations, authoring, protocol, and operations.
 
 ## Visual Studio Code
 

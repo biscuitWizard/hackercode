@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# monaco-paste.sh — insert text into the Code OSS chat input (Monaco) via
+# monaco-paste.sh — insert text into the HackerCode chat input (Monaco) via
 # the currently-attached @playwright/cli connection. Synthesizes a
 # ClipboardEvent('paste') with a DataTransfer payload — no system
-# clipboard involved, so safe to use against multiple parallel Code OSS
+# clipboard involved, so safe to use against multiple parallel HackerCode
 # instances (each subagent's @playwright/cli attaches to its own CDP).
 #
 # Why this exists: VS Code Monaco's `native-edit-context` element doesn't

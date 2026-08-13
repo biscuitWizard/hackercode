@@ -14,7 +14,7 @@
  *     npm run mock-policy-server
  *
  * Then open the printed URL, pick an endpoint, edit the status and JSON, and Wire.
- * Reload Code OSS and run "Developer: Sync Account Policy" +
+ * Reload HackerCode and run "Developer: Sync Account Policy" +
  * "Developer: Policy Diagnostics".
  */
 
@@ -66,7 +66,7 @@ const server = http.createServer((req, res) => {
 
 	try {
 		// Mocked Copilot endpoints. Only these get permissive CORS, so the web
-		// build (browser) of Code OSS can call them cross-origin. The control API
+		// build (browser) of HackerCode can call them cross-origin. The control API
 		// (/api/*) and static assets stay same-origin: that avoids a CSRF surface
 		// where an unrelated website could drive /api/wire and rewrite the local
 		// product.overrides.json.
@@ -163,11 +163,11 @@ server.listen(PORT, HOST, () => {
 	console.log(`  Managed-settings schema source: ${SCHEMA_SOURCE}`);
 	console.log('');
 	console.log('  Open the GUI, edit the response status and body, then Wire product.overrides.json.');
-	console.log('  Reload Code OSS and run "Developer: Sync Account Policy".');
+	console.log('  Reload HackerCode and run "Developer: Sync Account Policy".');
 	console.log('');
 });
 
-/** The URL Code OSS should call for a given endpoint. */
+/** The URL HackerCode should call for a given endpoint. */
 function endpointUrl(endpoint: EndpointDef): string {
 	return `http://${HOST}:${PORT}${endpoint.path}`;
 }
@@ -261,7 +261,7 @@ function isWired(): boolean {
 }
 
 /**
- * Write `product.overrides.json` so Code OSS calls this server for every policy
+ * Write `product.overrides.json` so HackerCode calls this server for every policy
  * endpoint.
  *
  * `src/bootstrap-meta.ts` merges overrides via `Object.assign` (shallow,

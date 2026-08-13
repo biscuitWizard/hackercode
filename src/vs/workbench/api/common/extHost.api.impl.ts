@@ -67,6 +67,7 @@ import { ExtHostFileSystem } from './extHostFileSystem.js';
 import { IExtHostConsumerFileSystem } from './extHostFileSystemConsumer.js';
 import { ExtHostFileSystemEventService, FileSystemWatcherCreateOptions } from './extHostFileSystemEventService.js';
 import { IExtHostFileSystemInfo } from './extHostFileSystemInfo.js';
+import { ExtHostHackerCode } from './extHostHackerCode.js';
 import { IExtHostInitDataService } from './extHostInitDataService.js';
 import { ExtHostInteractive } from './extHostInteractive.js';
 import { ExtHostLabelService } from './extHostLabelService.js';
@@ -280,6 +281,7 @@ export function createApiFactoryAndRegisterActors(accessor: ServicesAccessor): I
 	const extHostDialogs = new ExtHostDialogs(rpcProtocol);
 	const extHostChatStatus = new ExtHostChatStatus(rpcProtocol);
 	const extHostChatInputNotification = new ExtHostChatInputNotification(rpcProtocol);
+	const extHostHackerCode = new ExtHostHackerCode(rpcProtocol);
 
 	// Register API-ish commands
 	ExtHostApiCommands.register(extHostCommands);
@@ -1718,6 +1720,46 @@ export function createApiFactoryAndRegisterActors(accessor: ServicesAccessor): I
 			}
 		};
 
+		// namespace: hackerCode
+		const hackerCode: typeof vscode.hackerCode = {
+			getState() {
+				checkProposedApiEnabled(extension, 'hackerCode');
+				return extHostHackerCode.getState(extension);
+			},
+			listRevisions() {
+				checkProposedApiEnabled(extension, 'hackerCode');
+				return extHostHackerCode.listRevisions(extension);
+			},
+			getRevision(revisionId: string) {
+				checkProposedApiEnabled(extension, 'hackerCode');
+				return extHostHackerCode.getRevision(extension, revisionId);
+			},
+			createRevision(options: vscode.HackerCodeCreateRevisionOptions) {
+				checkProposedApiEnabled(extension, 'hackerCode');
+				return extHostHackerCode.createRevision(extension, options);
+			},
+			selectRevision(revisionId: string) {
+				checkProposedApiEnabled(extension, 'hackerCode');
+				return extHostHackerCode.selectRevision(extension, revisionId);
+			},
+			enterSafeMode(reason?: string) {
+				checkProposedApiEnabled(extension, 'hackerCode');
+				return extHostHackerCode.enterSafeMode(extension, reason);
+			},
+			evaluate(source: string) {
+				checkProposedApiEnabled(extension, 'hackerCode');
+				return extHostHackerCode.evaluate(extension, source);
+			},
+			refresh(mode: 'soft' | 'module' | 'hard', specifier?: string) {
+				checkProposedApiEnabled(extension, 'hackerCode');
+				return extHostHackerCode.refresh(extension, mode, specifier);
+			},
+			promoteActiveRevision(commitMessage?: string) {
+				checkProposedApiEnabled(extension, 'hackerCode');
+				return extHostHackerCode.promoteActiveRevision(extension, commitMessage);
+			}
+		};
+
 		// namespace: chatregisterMcpServerDefinitionProvider
 		const chat: typeof vscode.chat = {
 			registerMappedEditsProvider(_selector: vscode.DocumentSelector, _provider: vscode.MappedEditsProvider) {
@@ -1983,6 +2025,7 @@ export function createApiFactoryAndRegisterActors(accessor: ServicesAccessor): I
 			debug,
 			env,
 			extensions,
+			hackerCode,
 			interactive,
 			l10n,
 			languages,

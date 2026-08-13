@@ -835,7 +835,7 @@ export interface ILanguageModelProviderDescriptor extends IUserFriendlyLanguageM
 /**
  * Resolves a provider `deprecation.link` for opening inside the current build. Contributions point
  * at the replacement extension with a stable `vscode:extension/<id>` URI, but the URL service only
- * routes URIs whose scheme matches this build's `urlProtocol` (e.g. `code-oss`, `vscode-insiders`).
+ * routes URIs whose scheme matches this build's `urlProtocol` (e.g. `hackercode`, `vscode-insiders`).
  * The `vscode:` scheme is therefore rewritten to the current protocol so the extensions URL handler
  * opens the extension; without this the opener falls back to treating the URI as a (non-existent)
  * file resource and fails. Other schemes (http(s), command) are returned unchanged.

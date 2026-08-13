@@ -39,6 +39,7 @@ import { IEditorOptions } from '../../../platform/editor/common/editor.js';
 import { IExtensionIdWithVersion } from '../../../platform/extensionManagement/common/extensionStorage.js';
 import { ExtensionIdentifier, IExtensionDescription } from '../../../platform/extensions/common/extensions.js';
 import * as files from '../../../platform/files/common/files.js';
+import { IHackerCodeCreateRevisionRequest, IHackerCodePromoteResult, IHackerCodeRevisionManifest, IHackerCodeState } from '../../../platform/hackercode/common/hackerCode.js';
 import { ResourceLabelFormatter } from '../../../platform/label/common/label.js';
 import { ILoggerOptions, ILoggerResource, LogLevel } from '../../../platform/log/common/log.js';
 import { IMarkerData } from '../../../platform/markers/common/markers.js';
@@ -2565,6 +2566,26 @@ export interface MainThreadAiRelatedInformationShape {
 	$unregisterAiRelatedInformationProvider(handle: number): void;
 }
 
+export type HackerCodeSerializedValueDto =
+	| null
+	| boolean
+	| number
+	| string
+	| readonly unknown[]
+	| { readonly [key: string]: unknown };
+
+export interface MainThreadHackerCodeShape {
+	$getHackerCodeState(): Promise<IHackerCodeState>;
+	$listHackerCodeRevisions(): Promise<readonly IHackerCodeRevisionManifest[]>;
+	$getHackerCodeRevision(revisionId: string): Promise<IHackerCodeRevisionManifest | undefined>;
+	$createHackerCodeRevision(request: IHackerCodeCreateRevisionRequest): Promise<IHackerCodeRevisionManifest>;
+	$selectHackerCodeRevision(revisionId: string): Promise<IHackerCodeState>;
+	$enterHackerCodeSafeMode(reason?: string): Promise<IHackerCodeState>;
+	$evaluateHackerCode(source: string): Promise<HackerCodeSerializedValueDto>;
+	$refreshHackerCode(mode: 'soft' | 'module' | 'hard', specifier?: string): Promise<void>;
+	$promoteActiveHackerCodeRevision(commitMessage?: string): Promise<IHackerCodePromoteResult>;
+}
+
 export interface ExtHostAiSettingsSearchShape {
 	$startSearch(handle: number, query: string, option: AiSettingsSearchProviderOptions, token: CancellationToken): Promise<void>;
 }
@@ -4121,6 +4142,7 @@ export const MainContext = {
 	MainThreadLocalization: createProxyIdentifier<MainThreadLocalizationShape>('MainThreadLocalizationShape'),
 	MainThreadMcp: createProxyIdentifier<MainThreadMcpShape>('MainThreadMcpShape'),
 	MainThreadAiRelatedInformation: createProxyIdentifier<MainThreadAiRelatedInformationShape>('MainThreadAiRelatedInformation'),
+	MainThreadHackerCode: createProxyIdentifier<MainThreadHackerCodeShape>('MainThreadHackerCode'),
 	MainThreadAiEmbeddingVector: createProxyIdentifier<MainThreadAiEmbeddingVectorShape>('MainThreadAiEmbeddingVector'),
 	MainThreadChatStatus: createProxyIdentifier<MainThreadChatStatusShape>('MainThreadChatStatus'),
 	MainThreadChatQuota: createProxyIdentifier<MainThreadChatQuotaShape>('MainThreadChatQuota'),

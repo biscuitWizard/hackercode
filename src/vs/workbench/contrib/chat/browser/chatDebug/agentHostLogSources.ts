@@ -525,7 +525,7 @@ export async function readRemoteAgentHostLog(
 	}
 	candidates.add('.vscode-server');
 	candidates.add('.vscode-server-insiders');
-	candidates.add('.vscode-server-oss');
+	candidates.add('.hackercode-server');
 	candidates.add('.vscode-server-exploration');
 
 	// Enumerate every `<home>/<candidate>/data/logs/<datestamp>/agenthost.log`

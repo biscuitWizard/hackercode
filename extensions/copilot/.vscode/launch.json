@@ -50,7 +50,7 @@
 		{
 			"type": "node",
 			"request": "launch",
-			"name": "Launch Copilot Extension - Watch Mode - Code OSS",
+			"name": "Launch Copilot Extension - Watch Mode - HackerCode",
 			"runtimeExecutable": "${workspaceFolder}/../vscode/scripts/code.sh",
 			"windows": {
 				"runtimeExecutable": "${workspaceFolder}/../vscode/scripts/code.bat",
@@ -328,7 +328,7 @@
 			}
 		},
 		{
-			"name": "Attach to Extension Host - Code OSS",
+			"name": "Attach to Extension Host - HackerCode",
 			"type": "node",
 			"request": "attach",
 			"restart": true,

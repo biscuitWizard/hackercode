@@ -151,6 +151,9 @@ export interface NativeParsedArgs {
 	'enable-rdp-display-tracking'?: boolean;
 	'disable-layout-restore'?: boolean;
 	'disable-experiments'?: boolean;
+	'hackercode-safe-mode'?: boolean;
+	'hackercode-control'?: boolean;
+	'hackercode-destructive-recovery-test'?: boolean;
 
 	// chromium command line args: https://electronjs.org/docs/all#supported-chrome-command-line-switches
 	'no-proxy-server'?: boolean;

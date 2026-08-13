@@ -48,6 +48,8 @@ import { IExtensionHostStarter, ipcExtensionHostStarterChannelName } from '../..
 import { ExtensionHostStarter } from '../../platform/extensions/electron-main/extensionHostStarter.js';
 import { IExternalTerminalMainService } from '../../platform/externalTerminal/electron-main/externalTerminal.js';
 import { LinuxExternalTerminalService, MacExternalTerminalService, WindowsExternalTerminalService } from '../../platform/externalTerminal/node/externalTerminalService.js';
+import { IHackerCodeControlService } from '../../platform/hackercode/common/hackerCode.js';
+import { HackerCodeControlService } from '../../platform/hackercode/electron-main/hackerCodeControlService.js';
 import { ISandboxHelperMainService } from '../../platform/sandbox/electron-main/sandboxHelperService.js';
 import { SandboxHelperService } from '../../platform/sandbox/node/sandboxHelper.js';
 import { LOCAL_FILE_SYSTEM_CHANNEL_NAME } from '../../platform/files/common/diskFileSystemProviderClient.js';
@@ -214,6 +216,7 @@ export class CodeApplication extends Disposable {
 	private windowsMainService: IWindowsMainService | undefined;
 	private auxiliaryWindowsMainService: IAuxiliaryWindowsMainService | undefined;
 	private nativeHostMainService: INativeHostMainService | undefined;
+	private hackerCodeControlService: IHackerCodeControlService | undefined;
 
 	constructor(
 		private readonly mainProcessNodeIpcServer: NodeIPCServer,
@@ -661,6 +664,17 @@ export class CodeApplication extends Disposable {
 		validatedIpcMain.on('vscode:openDevTools', event => event.sender.openDevTools());
 
 		validatedIpcMain.on('vscode:reloadWindow', event => event.sender.reload());
+		validatedIpcMain.on('vscode:hackercodeSafeMode', event => {
+			const window = this.windowsMainService?.getWindowByWebContents(event.sender);
+			if (!window || !this.hackerCodeControlService) {
+				this.logService.warn('[HackerCode] Ignoring safe mode request from an unknown or not-yet-initialized window.');
+				return;
+			}
+			void this.hackerCodeControlService.enterSafeMode({
+				reason: localize('hackercode.keyboardSafeMode', "HackerCode safe mode was requested with the recovery keyboard shortcut"),
+				windowId: window.id
+			}).catch(error => this.logService.error('[HackerCode] Failed to enter safe mode from the recovery keyboard shortcut.', error));
+		});
 
 		validatedIpcMain.handle('vscode:notifyZoomLevel', async (event, zoomLevel: number | undefined) => {
 			const window = this.windowsMainService?.getWindowByWebContents(event.sender);
@@ -725,6 +739,7 @@ export class CodeApplication extends Disposable {
 
 		// Services
 		const appInstantiationService = await this.initServices(machineId, sqmId, devDeviceId, sharedProcessReady);
+		this.hackerCodeControlService = appInstantiationService.invokeFunction(accessor => accessor.get(IHackerCodeControlService));
 
 		// Error telemetry
 		appInstantiationService.invokeFunction(accessor => this._register(new ErrorTelemetry(accessor.get(ILogService), accessor.get(ITelemetryService))));
@@ -1197,6 +1212,9 @@ export class CodeApplication extends Disposable {
 		// Encryption
 		services.set(IEncryptionMainService, new SyncDescriptor(EncryptionMainService));
 
+		// HackerCode revision control
+		services.set(IHackerCodeControlService, new SyncDescriptor(HackerCodeControlService, [undefined], false /* proxied to other processes */));
+
 		// Browser View
 		services.set(IBrowserViewMainService, new SyncDescriptor(BrowserViewMainService, undefined, false /* proxied to other processes */));
 		services.set(IBrowserViewGroupMainService, new SyncDescriptor(BrowserViewGroupMainService, undefined, false /* proxied to other processes */));
@@ -1367,6 +1385,10 @@ export class CodeApplication extends Disposable {
 		// Encryption
 		const encryptionChannel = ProxyChannel.fromService(accessor.get(IEncryptionMainService), disposables);
 		mainProcessElectronServer.registerChannel('encryption', encryptionChannel);
+
+		// HackerCode revision control
+		const hackerCodeControlChannel = ProxyChannel.fromService(accessor.get(IHackerCodeControlService), disposables);
+		mainProcessElectronServer.registerChannel('hackercodeControl', hackerCodeControlChannel);
 
 		// Browser View
 		const browserViewChannel = ProxyChannel.fromService(accessor.get(IBrowserViewMainService), disposables);

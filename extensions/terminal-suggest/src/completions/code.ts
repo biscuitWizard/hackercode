@@ -983,7 +983,7 @@ export const codeTunnelSubcommands: Fig.Subcommand[] = [
 	},
 	{
 		name: 'serve-web',
-		description: 'Runs a local web version of Code - OSS',
+		description: 'Runs a local web version of HackerCode',
 		options: [
 			{
 				name: '--host',
@@ -1152,7 +1152,7 @@ export const codeTunnelSubcommands: Fig.Subcommand[] = [
 			},
 			{
 				name: 'serve-web',
-				description: 'Runs a local web version of Code - OSS',
+				description: 'Runs a local web version of HackerCode',
 			},
 			{
 				name: 'agent',
