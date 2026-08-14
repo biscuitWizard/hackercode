@@ -297,7 +297,7 @@ const desktopResourcePatterns = [
 	'vs/workbench/contrib/debug/browser/media/*.png',
 
 	// HackerCode promoted built-in patch layer
-	'vs/workbench/contrib/hackercode/browser/promoted/**',
+	'vs/workbench/contrib/hackercode/browser/promoted/**/*',
 
 	// Sessions - built-in prompts and skills
 	'vs/sessions/prompts/*.prompt.md',
@@ -573,6 +573,7 @@ async function copyResources(outDir: string, target: BuildTarget): Promise<void>
 		const files = await globAsync(pattern, {
 			cwd: path.join(REPO_ROOT, SRC_DIR),
 			ignore: ignorePatterns,
+			nodir: true,
 		});
 
 		for (const file of files) {

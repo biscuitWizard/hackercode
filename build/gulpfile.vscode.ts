@@ -116,7 +116,7 @@ const vscodeResourceIncludes = [
 	'out-build/vs/workbench/contrib/chat/browser/widget/media/chatPet/*.{gif,png}',
 
 	// HackerCode promoted built-in patch layer
-	'out-build/vs/workbench/contrib/hackercode/browser/promoted/**',
+	'out-build/vs/workbench/contrib/hackercode/browser/promoted/**/*',
 
 	// Sessions
 	'out-build/vs/sessions/contrib/chat/browser/media/*.svg',
