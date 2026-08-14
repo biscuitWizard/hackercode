@@ -58,7 +58,11 @@ function toolData(id: HackerCodeCoreToolId, displayName: string, modelDescriptio
 		inputSchema,
 		source: ToolDataSource.Internal,
 		runsInWorkspace: true,
-		tags: ['workspace']
+		tags: ['workspace'],
+		// Listed in the tool picker and referenceable as `#<id>`. Without these two
+		// the tool is still callable by the model but invisible to the user.
+		toolReferenceName: id,
+		canBeReferencedInPrompt: true
 	};
 }
 

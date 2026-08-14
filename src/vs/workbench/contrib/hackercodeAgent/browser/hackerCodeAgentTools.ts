@@ -82,7 +82,18 @@ const TOOL_NAME_PATTERN = /^[a-z][a-z0-9_]{0,63}$/;
 type HackerCodeGlobal = typeof globalThis & { $hackercode?: IHackerCodeRuntime };
 
 function toolData(id: HackerCodeToolId, displayName: string, modelDescription: string, inputSchema: IJSONSchema): IToolData {
-	return { id, displayName, modelDescription, inputSchema, source: ToolDataSource.Internal, tags: ['hackercode'] };
+	return {
+		id,
+		displayName,
+		modelDescription,
+		inputSchema,
+		source: ToolDataSource.Internal,
+		tags: ['hackercode'],
+		// Listed in the tool picker and referenceable as `#<id>`. Without these two
+		// the tool is still callable by the model but invisible to the user.
+		toolReferenceName: id,
+		canBeReferencedInPrompt: true
+	};
 }
 
 const EMPTY_SCHEMA: IJSONSchema = { type: 'object', properties: {}, additionalProperties: false };

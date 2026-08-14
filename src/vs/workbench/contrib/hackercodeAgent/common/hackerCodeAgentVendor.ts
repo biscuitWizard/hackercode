@@ -12,3 +12,4 @@ export const HACKERCODE_AGENT_VENDOR = 'hackercode';
 export const HACKERCODE_AGENT_ID = 'hackercode.agent';
 
 export const HACKERCODE_AGENT_MANAGE_PROVIDERS_COMMAND_ID = 'hackercodeAgent.manageProviders';
+export const HACKERCODE_AGENT_ADD_PROVIDER_COMMAND_ID = 'hackercodeAgent.addProvider';

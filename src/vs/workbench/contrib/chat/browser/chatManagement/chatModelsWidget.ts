@@ -49,9 +49,6 @@ import { IWorkbenchEnvironmentService } from '../../../../services/environment/c
 import Severity from '../../../../../base/common/severity.js';
 import { IJSONSchema } from '../../../../../base/common/jsonSchema.js';
 import { formatTokenCount } from '../../../../../base/common/numbers.js';
-import { IDefaultAccountService } from '../../../../../platform/defaultAccount/common/defaultAccount.js';
-import { CHAT_SETUP_ACTION_ID } from '../actions/chatActions.js';
-
 const $ = DOM.$;
 
 const HEADER_HEIGHT = 30;
@@ -170,16 +167,14 @@ export function getModelHoverContent(model: ILanguageModel): MarkdownString {
 /**
  * Pure helper for building the dropdown actions shown by the **Add Models** button.
  *
- * Exposed for unit testing. The Copilot sign-in action is independent of whether adding
- * configurable BYOK vendors is supported.
+ * Exposed for unit testing.
  */
 export function buildAddModelsDropdownActions(
 	configurableVendors: ILanguageModelProviderDescriptor[],
 	supportsAddingModels: boolean,
 	runVendorAction: (vendor: ILanguageModelProviderDescriptor) => void | Promise<void>,
-	runCopilotSignInAction?: () => void | Promise<void>,
 ): IAction[] {
-	if (!supportsAddingModels && !runCopilotSignInAction) {
+	if (!supportsAddingModels) {
 		return [];
 	}
 
@@ -210,28 +205,13 @@ export function buildAddModelsDropdownActions(
 		}
 	});
 
-	const vendorActions: IAction[] = supportsAddingModels ? sortedVendors.map(toVendorAction) : [];
-	if (supportsAddingModels && customEndpointVendor) {
-		if (vendorActions.length > 0) {
-			vendorActions.push(new Separator());
+	const actions: IAction[] = sortedVendors.map(toVendorAction);
+	if (customEndpointVendor) {
+		if (actions.length > 0) {
+			actions.push(new Separator());
 		}
-		vendorActions.push(toVendorAction(customEndpointVendor));
+		actions.push(toVendorAction(customEndpointVendor));
 	}
-
-	const actions: IAction[] = [];
-	if (runCopilotSignInAction) {
-		actions.push(toAction({
-			id: 'signIn-github-copilot',
-			label: localize('models.signInGitHubCopilot', "GitHub Copilot"),
-			run: async () => {
-				await runCopilotSignInAction();
-			},
-		}));
-	}
-	if (actions.length > 0 && vendorActions.length > 0) {
-		actions.push(new Separator());
-	}
-	actions.push(...vendorActions);
 
 	return actions;
 }
@@ -1146,7 +1126,6 @@ export class ChatModelsWidget extends Disposable {
 	private addButtonContainer!: HTMLElement;
 	private addButton!: Button;
 	private dropdownActions: IAction[] = [];
-	private defaultAccountResolved = false;
 	private viewModel: ChatModelsViewModel;
 	private delayedFiltering: Delayer<void>;
 
@@ -1167,7 +1146,6 @@ export class ChatModelsWidget extends Disposable {
 		@IDialogService private readonly dialogService: IDialogService,
 		@IExtensionsWorkbenchService private readonly extensionsWorkbenchService: IExtensionsWorkbenchService,
 		@IWorkbenchEnvironmentService private readonly environmentService: IWorkbenchEnvironmentService,
-		@IDefaultAccountService private readonly defaultAccountService: IDefaultAccountService,
 	) {
 		super();
 
@@ -1176,16 +1154,6 @@ export class ChatModelsWidget extends Disposable {
 		this.viewModel = this._register(this.instantiationService.createInstance(ChatModelsViewModel));
 		this.element = DOM.$('.models-widget');
 		this.create(this.element);
-		this._register(this.defaultAccountService.onDidChangeDefaultAccount(() => {
-			this.defaultAccountResolved = true;
-			this.updateAddModelsButton();
-		}));
-		this.defaultAccountService.getDefaultAccount().then(() => {
-			if (!this._store.isDisposed) {
-				this.defaultAccountResolved = true;
-				this.updateAddModelsButton();
-			}
-		});
 
 		const loadingPromise = this.extensionService.whenInstalledExtensionsRegistered().then(() => this.viewModel.refresh());
 		this.editorProgressService.showWhile(loadingPromise, 300);
@@ -1655,13 +1623,12 @@ export class ChatModelsWidget extends Disposable {
 				&& entitlement !== ChatEntitlement.Available
 				&& !isManagedEntitlement);
 
+		// No Copilot sign-in entry: there is no Copilot to sign in to, and the
+		// setup command it used to run no longer exists.
 		this.dropdownActions = buildAddModelsDropdownActions(
 			configurableVendors,
 			supportsAddingModels,
-			vendor => this.addModelsForVendor(vendor),
-			this.defaultAccountResolved && this.defaultAccountService.currentDefaultAccount === null
-				? () => this.commandService.executeCommand(CHAT_SETUP_ACTION_ID)
-				: undefined,
+			vendor => this.addModelsForVendor(vendor)
 		);
 
 		this.addButton.enabled = this.dropdownActions.length > 0;

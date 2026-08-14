@@ -23,14 +23,15 @@ export interface IHackerCodeAgentProviderConfigValue {
 
 Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Configuration).registerConfiguration({
 	id: 'hackercodeAgent',
-	order: 100,
+	order: 5,
 	title: localize('hackerCodeAgentConfigurationTitle', "HackerCode Agent"),
 	type: 'object',
 	properties: {
 		[HACKERCODE_AGENT_PROVIDERS_CONFIG_KEY]: {
 			type: 'array',
 			scope: ConfigurationScope.APPLICATION,
-			description: localize('hackerCodeAgent.providers.description', "OpenAI-compatible chat completions endpoints available to the HackerCode agent. API keys are stored separately in OS-backed secret storage, never here."),
+			tags: ['chat'],
+			markdownDescription: localize('hackerCodeAgent.providers.markdownDescription', "OpenAI-compatible chat completions endpoints for the HackerCode agent. API keys are stored in OS-backed secret storage, never in this setting.\n\n[Add a provider…](command:hackercodeAgent.addProvider)  •  [Manage API keys…](command:hackercodeAgent.manageProviders)"),
 			default: [],
 			items: {
 				type: 'object',
@@ -53,7 +54,7 @@ Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Configuration).regis
 						type: 'array',
 						items: { type: 'string' },
 						default: [],
-						description: localize('hackerCodeAgent.providers.models', "Model ids available at this endpoint. Use \"Fetch models\" in HackerCode settings to populate this from the endpoint's /models list.")
+						description: localize('hackerCodeAgent.providers.models', "Model ids available at this endpoint. Leave empty to use every model the endpoint reports from its /models list.")
 					}
 				}
 			}

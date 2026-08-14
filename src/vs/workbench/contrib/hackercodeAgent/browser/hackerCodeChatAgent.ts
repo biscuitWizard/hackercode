@@ -104,7 +104,7 @@ export class HackerCodeChatAgent extends Disposable implements IChatAgentImpleme
 		if (!modelId) {
 			return {
 				timings: { totalElapsed: stopWatch.elapsed() },
-				errorDetails: { message: localize('hackerCodeAgent.noModel', "Pick a model to start chatting. Add an OpenAI-compatible provider and API key in settings under \"hackercode.agent.providers\".") }
+				errorDetails: { message: localize('hackerCodeAgent.noModel', "Pick a model to start chatting. Run \"HackerCode: Add Model Provider\" from the Command Palette, or add an OpenAI-compatible endpoint under Settings → HackerCode Agent.") }
 			};
 		}
 		const model = this.languageModelsService.lookupLanguageModel(modelId);

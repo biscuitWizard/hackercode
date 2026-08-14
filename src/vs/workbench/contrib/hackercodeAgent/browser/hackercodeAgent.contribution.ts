@@ -5,8 +5,9 @@
 
 import { Codicon } from '../../../../base/common/codicons.js';
 import { Disposable, DisposableStore, toDisposable } from '../../../../base/common/lifecycle.js';
+import { ThemeIcon } from '../../../../base/common/themables.js';
 import { localize, localize2 } from '../../../../nls.js';
-import { Action2, registerAction2 } from '../../../../platform/actions/common/actions.js';
+import { Action2, MenuId, registerAction2 } from '../../../../platform/actions/common/actions.js';
 import { ContextKeyExpr } from '../../../../platform/contextkey/common/contextkey.js';
 import { IConfigurationService, ConfigurationTarget } from '../../../../platform/configuration/common/configuration.js';
 import { IInstantiationService, ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
@@ -18,12 +19,12 @@ import { nullExtensionDescription } from '../../../services/extensions/common/ex
 import { ChatAgentLocation, ChatConfiguration, ChatModeKind } from '../../chat/common/constants.js';
 import { ILanguageModelsService } from '../../chat/common/languageModels.js';
 import { IChatAgentService } from '../../chat/common/participants/chatAgents.js';
-import { ILanguageModelToolsService } from '../../chat/common/tools/languageModelToolsService.js';
-import { HACKERCODE_AGENT_PROVIDERS_CONFIG_KEY, readHackerCodeAgentProviderConfigs } from '../common/hackerCodeAgentConfiguration.js';
-import { HACKERCODE_AGENT_ID, HACKERCODE_AGENT_MANAGE_PROVIDERS_COMMAND_ID, HACKERCODE_AGENT_VENDOR } from '../common/hackerCodeAgentVendor.js';
+import { ILanguageModelToolsService, ToolDataSource } from '../../chat/common/tools/languageModelToolsService.js';
+import { HACKERCODE_AGENT_PROVIDERS_CONFIG_KEY, IHackerCodeAgentProviderConfigValue, readHackerCodeAgentProviderConfigs } from '../common/hackerCodeAgentConfiguration.js';
+import { HACKERCODE_AGENT_ADD_PROVIDER_COMMAND_ID, HACKERCODE_AGENT_ID, HACKERCODE_AGENT_MANAGE_PROVIDERS_COMMAND_ID, HACKERCODE_AGENT_VENDOR } from '../common/hackerCodeAgentVendor.js';
 import { deleteHackerCodeAgentProviderApiKey, writeHackerCodeAgentProviderApiKey } from '../common/hackerCodeAgentSecrets.js';
 import { HackerCodeChatAgent } from './hackerCodeChatAgent.js';
-import { HackerCodeControlTool, HackerCodeToolData, HackerCodeToolId } from './hackerCodeAgentTools.js';
+import { HackerCodeControlTool, HackerCodeToolData, HackerCodeToolId, isMutatingHackerCodeTool } from './hackerCodeAgentTools.js';
 import { HackerCodeCoreTool, HackerCodeCoreToolData, HackerCodeCoreToolId } from './hackerCodeCoreTools.js';
 import { HackerCodeLanguageModelProvider } from './hackerCodeLanguageModelProvider.js';
 import '../common/hackerCodeAgentConfiguration.js';
@@ -68,14 +69,32 @@ class HackerCodeAgentContribution extends Disposable implements IWorkbenchContri
 		provider.refreshModels();
 
 		// Tools. Registered before the participants so the first turn already sees
-		// the full set.
+		// the full set. The HackerCode tool set is the named group in both the
+		// chat tools picker and Chat Customizations → Tools; without it the
+		// tools dump into the anonymous Built-In bucket (or nowhere, in the
+		// Customizations editor, which hides deprecated groupings).
+		const hackerCodeToolSet = this._register(toolsService.createToolSet(
+			ToolDataSource.Internal,
+			'hackercode',
+			'hackercode',
+			{
+				icon: ThemeIcon.fromId(Codicon.hubot.id),
+				description: localize('hackerCodeAgent.toolSet.description', "HackerCode"),
+				detail: localize('hackerCodeAgent.toolSet.detail', "Read the workspace and operate the HackerCode runtime patch control plane.")
+			}
+		));
 		for (const data of HackerCodeToolData) {
 			const tool = this._register(instantiationService.createInstance(HackerCodeControlTool, data.id as HackerCodeToolId));
 			this._register(toolsService.registerTool(data, tool));
+			this._register(hackerCodeToolSet.addTool(data));
+			if (!isMutatingHackerCodeTool(data.id)) {
+				this._register(toolsService.readToolSet.addTool(data));
+			}
 		}
 		for (const data of HackerCodeCoreToolData) {
 			const tool = this._register(instantiationService.createInstance(HackerCodeCoreTool, data.id as HackerCodeCoreToolId));
 			this._register(toolsService.registerTool(data, tool));
+			this._register(hackerCodeToolSet.addTool(data));
 			this._register(toolsService.readToolSet.addTool(data));
 		}
 
@@ -123,16 +142,23 @@ const DESCRIPTIONS: { readonly [K in ChatModeKind]?: string } = {
 	[ChatModeKind.Agent]: localize('hackerCodeAgent.description.agent', "Build, patch and operate the HackerCode runtime")
 };
 
+const HACKERCODE_CATEGORY = localize2('hackerCode', "HackerCode");
+
 /**
- * The model picker's gear action for the HackerCode vendor: set an API key for
- * a configured provider, or jump to the provider list in settings.
+ * The model picker's gear action for the HackerCode vendor: add a provider,
+ * set an API key, or jump to the provider list in settings.
  */
 class ManageHackerCodeProvidersAction extends Action2 {
 	constructor() {
 		super({
 			id: HACKERCODE_AGENT_MANAGE_PROVIDERS_COMMAND_ID,
-			title: localize2('hackerCodeAgent.manageProviders', "HackerCode: Manage Model Providers"),
-			f1: true
+			title: localize2('hackerCodeAgent.manageProviders', "Manage Model Providers"),
+			category: HACKERCODE_CATEGORY,
+			f1: true,
+			menu: [
+				{ id: MenuId.MenubarPreferencesMenu, group: '2_configuration', order: 8 },
+				{ id: MenuId.ChatTitleBarMenu, group: 'z_manage', order: 2 }
+			]
 		});
 	}
 
@@ -144,6 +170,11 @@ class ManageHackerCodeProvidersAction extends Action2 {
 
 		const providers = readHackerCodeAgentProviderConfigs(configurationService);
 		const picked = await quickInputService.pick([
+			{
+				label: localize('hackerCodeAgent.addProviderPick', "Add a provider..."),
+				detail: localize('hackerCodeAgent.addProviderPickDetail', "Name, base URL, and optional API key for an OpenAI-compatible endpoint"),
+				id: '$add'
+			},
 			...providers.map(provider => ({
 				label: provider.label || provider.id,
 				description: provider.baseUrl,
@@ -151,17 +182,21 @@ class ManageHackerCodeProvidersAction extends Action2 {
 				id: provider.id
 			})),
 			{
-				label: localize('hackerCodeAgent.editProviders', "Edit providers in settings..."),
-				detail: localize('hackerCodeAgent.editProvidersDetail', "Add or change endpoints and model lists"),
-				id: undefined
+				label: localize('hackerCodeAgent.editProviders', "Edit providers in Settings..."),
+				detail: localize('hackerCodeAgent.editProvidersDetail', "Open the HackerCode Agent section of Settings"),
+				id: '$settings'
 			}
-		], { placeHolder: localize('hackerCodeAgent.pickProvider', "Select a provider to configure") });
+		], { placeHolder: localize('hackerCodeAgent.pickProvider', "Configure a HackerCode model provider") });
 
 		if (!picked) {
 			return;
 		}
-		if (!picked.id) {
-			await preferencesService.openSettings({ query: HACKERCODE_AGENT_PROVIDERS_CONFIG_KEY });
+		if (picked.id === '$add') {
+			await addHackerCodeProvider(quickInputService, configurationService, secretStorageService);
+			return;
+		}
+		if (picked.id === '$settings') {
+			await preferencesService.openSettings({ query: `@id:${HACKERCODE_AGENT_PROVIDERS_CONFIG_KEY}` });
 			return;
 		}
 
@@ -188,49 +223,59 @@ class ManageHackerCodeProvidersAction extends Action2 {
 class AddHackerCodeProviderAction extends Action2 {
 	constructor() {
 		super({
-			id: 'hackercodeAgent.addProvider',
-			title: localize2('hackerCodeAgent.addProvider', "HackerCode: Add Model Provider"),
+			id: HACKERCODE_AGENT_ADD_PROVIDER_COMMAND_ID,
+			title: localize2('hackerCodeAgent.addProvider', "Add Model Provider"),
+			category: HACKERCODE_CATEGORY,
 			f1: true
 		});
 	}
 
 	override async run(accessor: ServicesAccessor): Promise<void> {
-		const quickInputService = accessor.get(IQuickInputService);
-		const configurationService = accessor.get(IConfigurationService);
-		const secretStorageService = accessor.get(ISecretStorageService);
-
-		const label = await quickInputService.input({
-			placeHolder: localize('hackerCodeAgent.add.labelPlaceholder', "A display name, e.g. OpenAI"),
-			prompt: localize('hackerCodeAgent.add.labelPrompt', "What should this provider be called?")
-		});
-		if (!label) {
-			return;
-		}
-		const baseUrl = await quickInputService.input({
-			placeHolder: 'https://api.openai.com/v1',
-			prompt: localize('hackerCodeAgent.add.baseUrlPrompt', "The base URL of an OpenAI-compatible API.")
-		});
-		if (!baseUrl) {
-			return;
-		}
-		const apiKey = await quickInputService.input({
-			password: true,
-			prompt: localize('hackerCodeAgent.add.apiKeyPrompt', "API key, stored in OS-backed secret storage. Leave empty for an endpoint that needs none.")
-		});
-		if (apiKey === undefined) {
-			return;
-		}
-
-		const id = toProviderId(label, readHackerCodeAgentProviderConfigs(configurationService).map(provider => provider.id));
-		const existing = readHackerCodeAgentProviderConfigs(configurationService);
-		await configurationService.updateValue(
-			HACKERCODE_AGENT_PROVIDERS_CONFIG_KEY,
-			[...existing, { id, label, baseUrl, models: [] }],
-			ConfigurationTarget.APPLICATION
+		await addHackerCodeProvider(
+			accessor.get(IQuickInputService),
+			accessor.get(IConfigurationService),
+			accessor.get(ISecretStorageService)
 		);
-		if (apiKey) {
-			await writeHackerCodeAgentProviderApiKey(secretStorageService, id, apiKey);
-		}
+	}
+}
+
+async function addHackerCodeProvider(
+	quickInputService: IQuickInputService,
+	configurationService: IConfigurationService,
+	secretStorageService: ISecretStorageService
+): Promise<void> {
+	const label = await quickInputService.input({
+		placeHolder: localize('hackerCodeAgent.add.labelPlaceholder', "A display name, e.g. OpenAI"),
+		prompt: localize('hackerCodeAgent.add.labelPrompt', "What should this provider be called?")
+	});
+	if (!label) {
+		return;
+	}
+	const baseUrl = await quickInputService.input({
+		placeHolder: 'https://api.openai.com/v1',
+		prompt: localize('hackerCodeAgent.add.baseUrlPrompt', "The base URL of an OpenAI-compatible API.")
+	});
+	if (!baseUrl) {
+		return;
+	}
+	const apiKey = await quickInputService.input({
+		password: true,
+		prompt: localize('hackerCodeAgent.add.apiKeyPrompt', "API key, stored in OS-backed secret storage. Leave empty for an endpoint that needs none.")
+	});
+	if (apiKey === undefined) {
+		return;
+	}
+
+	const existing = readHackerCodeAgentProviderConfigs(configurationService);
+	const id = toProviderId(label, existing.map(provider => provider.id));
+	const next: IHackerCodeAgentProviderConfigValue[] = [...existing, { id, label, baseUrl, models: [] }];
+	await configurationService.updateValue(
+		HACKERCODE_AGENT_PROVIDERS_CONFIG_KEY,
+		next,
+		ConfigurationTarget.APPLICATION
+	);
+	if (apiKey) {
+		await writeHackerCodeAgentProviderApiKey(secretStorageService, id, apiKey);
 	}
 }
 
