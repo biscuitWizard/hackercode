@@ -28,7 +28,16 @@ import {
 } from '../../chat/common/participants/chatAgents.js';
 import { CountTokensCallback, ILanguageModelToolsService, IToolData, IToolResult } from '../../chat/common/tools/languageModelToolsService.js';
 import { isMutatingHackerCodeTool } from './hackerCodeAgentTools.js';
+import { isMutatingExtensionTool } from './hackerCodeExtensionTools.js';
 import { buildHackerCodeSystemPrompt } from './hackerCodeAgentPrompt.js';
+
+/**
+ * Tools that change the machine rather than describe it, and so are only ever
+ * offered in Agent mode: the control-plane mutations and Marketplace installs.
+ */
+function isAgentModeOnlyTool(toolId: string): boolean {
+	return isMutatingHackerCodeTool(toolId) || isMutatingExtensionTool(toolId);
+}
 
 /**
  * How many model round trips one user turn may take before the loop gives up.
@@ -223,8 +232,8 @@ export class HackerCodeChatAgent extends Disposable implements IChatAgentImpleme
 
 	/**
 	 * The tools offered to the model for this request: everything the tool
-	 * picker has enabled, minus the HackerCode control-plane tools that mutate
-	 * the running runtime when the user is not in Agent mode. That last filter
+	 * picker has enabled, minus the tools that mutate the running runtime or
+	 * install code into it when the user is not in Agent mode. That last filter
 	 * is a policy the model is never asked to respect — it simply never sees
 	 * those tools, and {@link _invokeTool} rejects them if it guesses a name.
 	 */
@@ -235,7 +244,7 @@ export class HackerCodeChatAgent extends Disposable implements IChatAgentImpleme
 			if (enabled && enabled[tool.id] === false) {
 				continue;
 			}
-			if (this.mode !== ChatModeKind.Agent && isMutatingHackerCodeTool(tool.id)) {
+			if (this.mode !== ChatModeKind.Agent && isAgentModeOnlyTool(tool.id)) {
 				continue;
 			}
 			result.push(tool);

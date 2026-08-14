@@ -27,9 +27,9 @@ export const HACKERCODE_HARD_CONSTRAINTS = `You are operating HackerCode's runti
 Call hc_get_state before reasoning about the current revision, quarantines, or baseline; the state is not included in this prompt.`;
 
 const MODE_GUIDANCE: { readonly [K in ChatModeKind]?: string } = {
-	[ChatModeKind.Ask]: 'You are in Ask mode. Read state and explain. The tools that create, activate, refresh, revert, define, promote, or enter safe mode are not available to you. If the user wants a change, describe it in words and suggest switching to Agent mode.',
-	[ChatModeKind.Edit]: 'You are in Edit mode. You may read state and edit workspace files. The HackerCode control-plane tools that mutate the running runtime are not available to you; suggest switching to Agent mode for those.',
-	[ChatModeKind.Agent]: 'You are in Agent mode. You may use the full tool set, including creating and activating revisions, defining new tools as patches, and requesting promotion (which always requires separate human confirmation before it is sent).'
+	[ChatModeKind.Ask]: 'You are in Ask mode. Read state and explain. The tools that create, activate, refresh, revert, define, promote, enter safe mode, or install extensions are not available to you. If the user wants a change, describe it in words and suggest switching to Agent mode.',
+	[ChatModeKind.Edit]: 'You are in Edit mode. You may read state and edit workspace files. The tools that mutate the running runtime or install extensions are not available to you; suggest switching to Agent mode for those.',
+	[ChatModeKind.Agent]: 'You are in Agent mode. You may use the full tool set, including creating and activating revisions, defining new tools as patches, installing Marketplace extensions, and requesting promotion. Promotion and extension installs always require separate human confirmation before they take effect.'
 };
 
 export function buildHackerCodeSystemPrompt(mode: ChatModeKind): string {

@@ -31,6 +31,7 @@ import { deleteHackerCodeAgentProviderApiKey, readHackerCodeAgentProviderApiKey,
 import { HackerCodeChatAgent } from './hackerCodeChatAgent.js';
 import { HackerCodeControlTool, HackerCodeToolData, HackerCodeToolId, isMutatingHackerCodeTool } from './hackerCodeAgentTools.js';
 import { HackerCodeCoreTool, HackerCodeCoreToolData, HackerCodeCoreToolId } from './hackerCodeCoreTools.js';
+import { HackerCodeExtensionTool, HackerCodeExtensionToolData, HackerCodeExtensionToolId } from './hackerCodeExtensionTools.js';
 import { HackerCodeLanguageModelProvider } from './hackerCodeLanguageModelProvider.js';
 import '../common/hackerCodeAgentConfiguration.js';
 
@@ -101,6 +102,12 @@ class HackerCodeAgentContribution extends Disposable implements IWorkbenchContri
 			this._register(toolsService.registerTool(data, tool));
 			this._register(hackerCodeToolSet.addTool(data));
 			this._register(toolsService.readToolSet.addTool(data));
+		}
+		for (const data of HackerCodeExtensionToolData) {
+			const tool = this._register(instantiationService.createInstance(HackerCodeExtensionTool, data.id as HackerCodeExtensionToolId));
+			this._register(toolsService.registerTool(data, tool));
+			this._register(hackerCodeToolSet.addTool(data));
+			// Deliberately not in the read tool set: installing is a mutation.
 		}
 
 		// Participants. One per mode, because the chat service resolves the default
@@ -195,9 +202,9 @@ class ManageHackerCodeProvidersAction extends Action2 {
 					? [{ type: 'separator', label: localize('hackerCodeAgent.providersGroup', "Providers") } satisfies IQuickPickSeparator, ...providerItems]
 					: [{ type: 'separator', label: localize('hackerCodeAgent.noProviders', "No providers configured yet") } satisfies IQuickPickSeparator]),
 				{ type: 'separator' } satisfies IQuickPickSeparator,
-				{ id: '$add', label: localize('hackerCodeAgent.addProviderPick', "$(add) Add a provider...") },
-				{ id: '$models', label: localize('hackerCodeAgent.showModels', "$(list-selection) Show models...") },
-				{ id: '$settings', label: localize('hackerCodeAgent.editProviders', "$(json) Edit providers in settings.json...") }
+				{ id: '$add', label: `$(add) ${localize('hackerCodeAgent.addProviderPick', "Add a provider...")}` },
+				{ id: '$models', label: `$(list-selection) ${localize('hackerCodeAgent.showModels', "Show models...")}` },
+				{ id: '$settings', label: `$(json) ${localize('hackerCodeAgent.editProviders', "Edit providers in settings.json...")}` }
 			], { placeHolder: localize('hackerCodeAgent.pickProvider', "HackerCode model providers") });
 
 			if (!picked) {

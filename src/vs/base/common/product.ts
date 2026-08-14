@@ -141,12 +141,19 @@ export interface IProductConfiguration {
 		assignmentContextTelemetryPropertyName: string;
 	};
 
+	/**
+	 * Only `serviceUrl` is load-bearing: it is what decides whether a gallery
+	 * exists at all. Every other endpoint is read defensively, so a gallery can
+	 * be configured with just the routes it actually serves.
+	 */
 	readonly extensionsGallery?: {
 		readonly serviceUrl: string;
-		readonly controlUrl: string;
-		readonly extensionUrlTemplate: string;
-		readonly resourceUrlTemplate: string;
-		readonly nlsBaseUrl: string;
+		readonly itemUrl?: string;
+		readonly publisherUrl?: string;
+		readonly controlUrl?: string;
+		readonly extensionUrlTemplate?: string;
+		readonly resourceUrlTemplate?: string;
+		readonly nlsBaseUrl?: string;
 		readonly accessSKUs?: string[];
 	};
 
