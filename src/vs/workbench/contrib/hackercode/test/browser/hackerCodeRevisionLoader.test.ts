@@ -63,7 +63,8 @@ suite('HackerCodeRevisionLoader', () => {
 			].map(specifier => getThrownMessage(() => validateHackerCodeModuleSpecifier(specifier))),
 			protected: [
 				'vs/platform/hackercode/common/hackerCode.js',
-				'vs/workbench/contrib/HackerCode/browser/hackerCodePatchRegistry.js'
+				'vs/workbench/contrib/HackerCode/browser/hackerCodePatchRegistry.js',
+				'vs/workbench/contrib/HackerCodeAgent/browser/hackerCodeAgentTransport.js'
 			].map(specifier => getThrownMessage(() => validateHackerCodeModuleSpecifier(specifier)))
 		}, {
 			valid: 'vs/editor/common/core/range.js',
@@ -78,7 +79,8 @@ suite('HackerCodeRevisionLoader', () => {
 			],
 			protected: [
 				'HackerCode cannot import protected control-plane module: vs/platform/hackercode/common/hackerCode.js',
-				'HackerCode cannot import protected control-plane module: vs/workbench/contrib/HackerCode/browser/hackerCodePatchRegistry.js'
+				'HackerCode cannot import protected control-plane module: vs/workbench/contrib/HackerCode/browser/hackerCodePatchRegistry.js',
+				'HackerCode cannot import protected control-plane module: vs/workbench/contrib/HackerCodeAgent/browser/hackerCodeAgentTransport.js'
 			]
 		});
 	});

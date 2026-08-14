@@ -15,7 +15,8 @@ import { IHackerCodePatchRegistry, IHackerCodePreparedPatch } from './hackerCode
 
 const PROTECTED_MODULE_PREFIXES = [
 	'vs/platform/hackercode/',
-	'vs/workbench/contrib/hackercode/'
+	'vs/workbench/contrib/hackercode/',
+	'vs/workbench/contrib/hackercodeagent/'
 ] as const;
 
 type HackerCodePatchFactory = IHackerCodePreparedPatch['factory'];
