@@ -19,7 +19,7 @@ test('parseFlags separates positionals from --flag/value pairs', () => {
 });
 
 test('parseFlags treats a trailing flag with no following value as boolean true', () => {
-	const { options } = parseFlags(['serve', '--help']);
+	const { options } = parseFlags(['selftest', '--help']);
 	assert.equal(options.get('help'), true);
 });
 
@@ -33,9 +33,8 @@ test('--help prints usage and exits zero without requiring a control file', asyn
 			}
 		});
 	});
-	assert.match(stdout, /HackerCode agentic harness driver/);
+	assert.match(stdout, /HackerCode control-plane CLI/);
 	assert.match(stdout, /selftest/);
-	assert.match(stdout, /serve/);
 });
 
 test('missing --control-file fails fast with a JSON error and nonzero exit, never printing a token-shaped value', async () => {

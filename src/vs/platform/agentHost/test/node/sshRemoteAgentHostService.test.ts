@@ -1294,8 +1294,8 @@ suite('SSHRemoteAgentHostMainService - connect flow', () => {
 		await loggingService.connect(makeConfig({ sshConfigHost: 'myhost' }));
 
 		assert.deepStrictEqual(logService.warnings, [
-			'[SSHRemoteAgentHost] Desktop has no product commit; falling back to non-pinned CLI install at ~/.vscode-server-oss/code-insiders.',
-			'[SSHRemoteAgentHost] Could not refresh the dev-build remote CLI at ~/.vscode-server-oss/code-insiders; reusing the existing executable: update exited 1',
+			'[SSHRemoteAgentHost] Desktop has no product commit; falling back to non-pinned CLI install at ~/.hackercode-server/code-insiders.',
+			'[SSHRemoteAgentHost] Could not refresh the dev-build remote CLI at ~/.hackercode-server/code-insiders; reusing the existing executable: update exited 1',
 		]);
 	});
 

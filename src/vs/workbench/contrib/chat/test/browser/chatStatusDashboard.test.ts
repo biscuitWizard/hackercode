@@ -682,7 +682,7 @@ suite('ChatStatusDashboard', () => {
 		const indicator = dashboard.element.querySelector('.quota-indicator.credits-used');
 		const credits = getCreditsUsed(dashboard.element);
 		assert.ok(indicator?.classList.contains('compact'));
-		assert.strictEqual(indicator?.querySelector('.quota-title')?.textContent, 'Copilot Business');
+		assert.strictEqual(indicator?.querySelector('.quota-title')?.textContent, 'HackerCode');
 		assert.strictEqual(credits?.value, '1,284');
 		assert.strictEqual(credits?.suffix, 'Credits used');
 		assert.ok(credits?.reset.startsWith('Resets May 31 at '));

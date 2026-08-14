@@ -7,7 +7,6 @@ import { localize } from '../../../../nls.js';
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
 import { ConfigurationScope, Extensions as ConfigurationExtensions, IConfigurationRegistry } from '../../../../platform/configuration/common/configurationRegistry.js';
 import { Registry } from '../../../../platform/registry/common/platform.js';
-import { IHackerCodeAgentProviderConfig } from './hackerCodeAgentProtocol.js';
 
 /**
  * Non-secret provider configuration (id/label/baseUrl/models) lives in
@@ -80,10 +79,6 @@ export function readHackerCodeAgentProviderConfigs(configurationService: IConfig
 		});
 	}
 	return result;
-}
-
-export function toHackerCodeAgentProviderConfig(value: IHackerCodeAgentProviderConfigValue): IHackerCodeAgentProviderConfig {
-	return { id: value.id, label: value.label, baseUrl: value.baseUrl, models: value.models };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

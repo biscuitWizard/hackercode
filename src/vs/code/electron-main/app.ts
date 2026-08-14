@@ -49,7 +49,9 @@ import { ExtensionHostStarter } from '../../platform/extensions/electron-main/ex
 import { IExternalTerminalMainService } from '../../platform/externalTerminal/electron-main/externalTerminal.js';
 import { LinuxExternalTerminalService, MacExternalTerminalService, WindowsExternalTerminalService } from '../../platform/externalTerminal/node/externalTerminalService.js';
 import { IHackerCodeControlService } from '../../platform/hackercode/common/hackerCode.js';
+import { HACKERCODE_CHAT_RELAY_CHANNEL, IHackerCodeChatRelayService } from '../../platform/hackercode/common/hackerCodeChat.js';
 import { HackerCodeControlService } from '../../platform/hackercode/electron-main/hackerCodeControlService.js';
+import { HackerCodeChatRelayService } from '../../platform/hackercode/electron-main/hackerCodeChatRelayService.js';
 import { ISandboxHelperMainService } from '../../platform/sandbox/electron-main/sandboxHelperService.js';
 import { SandboxHelperService } from '../../platform/sandbox/node/sandboxHelper.js';
 import { LOCAL_FILE_SYSTEM_CHANNEL_NAME } from '../../platform/files/common/diskFileSystemProviderClient.js';
@@ -1215,6 +1217,9 @@ export class CodeApplication extends Disposable {
 		// HackerCode revision control
 		services.set(IHackerCodeControlService, new SyncDescriptor(HackerCodeControlService, [undefined], false /* proxied to other processes */));
 
+		// HackerCode model provider requests, which a renderer cannot make itself
+		services.set(IHackerCodeChatRelayService, new SyncDescriptor(HackerCodeChatRelayService, undefined, false /* proxied to other processes */));
+
 		// Browser View
 		services.set(IBrowserViewMainService, new SyncDescriptor(BrowserViewMainService, undefined, false /* proxied to other processes */));
 		services.set(IBrowserViewGroupMainService, new SyncDescriptor(BrowserViewGroupMainService, undefined, false /* proxied to other processes */));
@@ -1389,6 +1394,10 @@ export class CodeApplication extends Disposable {
 		// HackerCode revision control
 		const hackerCodeControlChannel = ProxyChannel.fromService(accessor.get(IHackerCodeControlService), disposables);
 		mainProcessElectronServer.registerChannel('hackercodeControl', hackerCodeControlChannel);
+
+		// HackerCode chat relay
+		const hackerCodeChatRelayChannel = ProxyChannel.fromService(accessor.get(IHackerCodeChatRelayService), disposables);
+		mainProcessElectronServer.registerChannel(HACKERCODE_CHAT_RELAY_CHANNEL, hackerCodeChatRelayChannel);
 
 		// Browser View
 		const browserViewChannel = ProxyChannel.fromService(accessor.get(IBrowserViewMainService), disposables);

@@ -39,7 +39,7 @@ import { IAgentHostGitHubEndpointService } from '../agentHostGitHubEndpointServi
 import { IAgentHostGitService } from '../../common/agentHostGitService.js';
 import { IAgentHostCheckpointService } from '../../common/agentHostCheckpointService.js';
 import { PendingRequestRegistry } from '../../common/pendingRequestRegistry.js';
-import { projectFromCopilotContext } from '../copilot/copilotGitProject.js';
+import { projectFromSessionContext } from '../shared/gitProject.js';
 import { ICopilotApiService } from '../shared/copilotApiService.js';
 import { IClaudeAgentSdkService } from './claudeAgentSdkService.js';
 import { buildModelEnumerationOptions } from './claudeSdkOptions.js';
@@ -1534,7 +1534,7 @@ export class ClaudeAgent extends Disposable implements IAgent {
 	/** Best-effort git project metadata for a resolved working directory. */
 	private async _resolveProject(workingDirectory: URI): Promise<IAgentSessionProjectInfo | undefined> {
 		try {
-			return await projectFromCopilotContext({ cwd: workingDirectory.fsPath }, this._gitService);
+			return await projectFromSessionContext({ cwd: workingDirectory.fsPath }, this._gitService);
 		} catch (err) {
 			this._logService.warn(`[Claude] project resolution failed for ${workingDirectory.toString()}; continuing without project`, err);
 			return undefined;
@@ -1753,7 +1753,7 @@ export class ClaudeAgent extends Disposable implements IAgent {
 		const additionalDirectories = workingDirectories.slice(1);
 		let project: IAgentSessionProjectInfo | undefined;
 		try {
-			project = await projectFromCopilotContext({ cwd: workingDirectory.fsPath }, this._gitService);
+			project = await projectFromSessionContext({ cwd: workingDirectory.fsPath }, this._gitService);
 		} catch (err) {
 			this._logService.warn(`[Claude] project resolution failed for chat ${chat.toString()}; continuing without project`, err);
 		}

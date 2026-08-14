@@ -12,7 +12,7 @@ import { IAgentHostGitHubEndpointService } from '../agentHostGitHubEndpointServi
 import { ILogService } from '../../../log/common/log.js';
 import { IProductService } from '../../../product/common/productService.js';
 import { COPILOT_LICENSE_AGREEMENT } from '../../../endpoint/common/licenseAgreement.js';
-import { parseCopilotTokenFields } from '../copilot/copilotTokenFields.js';
+import { parseCopilotTokenFields } from './copilotTokenFields.js';
 
 // #region Types
 

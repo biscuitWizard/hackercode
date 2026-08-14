@@ -394,13 +394,8 @@ jobs:
         working-directory: test/smoke
         run: npm run compile
 
-      - name: Compile Copilot Chat extension for smoke tests
-        if: ${{ inputs.smoke_tests }}
-        working-directory: extensions/copilot
-        run: npm run compile
-
       # Remove the musl-libc Claude Code native binary so the bundled
-      # @anthropic-ai/claude-agent-sdk in extensions/copilot falls through to the
+      # @anthropic-ai/claude-agent-sdk falls through to the
       # glibc variant (or its bundled ./cli.js fallback). The musl binary is
       # pulled in by the root devDependency @anthropic-ai/claude-agent-sdk@0.2.x,
       # whose package metadata declares both "linux-x64" and "linux-x64-musl" as

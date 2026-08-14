@@ -30,7 +30,6 @@ import { IAgentHostManagedSettingsService } from './agentHostManagedSettingsServ
 import { IAgentHostGitHubEndpointService } from './agentHostGitHubEndpointService.js';
 import { IAgentHostCompletions } from './agentHostCompletions.js';
 import { IAgentHostTerminalManager } from './agentHostTerminalManager.js';
-import { CopilotAgent } from './copilot/copilotAgent.js';
 import { IAgentHostWorktreeIsolation, WorktreeIsolation } from './shared/worktreeIsolation.js';
 import { CopilotApiService, ICopilotApiService } from './shared/copilotApiService.js';
 import { ClaudeAgent } from './claude/claudeAgent.js';
@@ -39,7 +38,6 @@ import { ClaudeProxyService, IClaudeProxyService } from './claude/claudeProxySer
 import { CodexAgent, CodexSdkPackage } from './codex/codexAgent.js';
 import { createCodexProviderConfiguration } from './codex/codexProviderConfiguration.js';
 import { CodexProxyService, ICodexProxyService } from './codex/codexProxyService.js';
-import { ByokLmProxyService, IByokLmProxyService } from './copilot/byokLmProxyService.js';
 import { ByokLmBridgeRegistry, IByokLmBridgeRegistry } from './byokLmBridgeRegistry.js';
 import { IAgentHostProxyResolver } from './agentHostProxyResolver.js';
 import { INetworkDiagnosticsService, NetworkDiagnosticsService } from './networkDiagnosticsService.js';
@@ -94,7 +92,7 @@ import { AgentHostGitService } from './agentHostGitService.js';
 import { IAgentHostGitService } from '../common/agentHostGitService.js';
 import { IAgentHostCheckpointService } from '../common/agentHostCheckpointService.js';
 import { AgentHostFileMonitorService, IAgentHostFileMonitorService } from './agentHostFileMonitorService.js';
-import { registerPendingEditContentProvider } from './copilot/pendingEditContentStore.js';
+import { registerPendingEditContentProvider } from './shared/pendingEditContentStore.js';
 import { join } from '../../../base/common/path.js';
 import { createAgentHostTelemetryService } from './agentHostTelemetryService.js';
 import { ITelemetryService } from '../../telemetry/common/telemetry.js';
@@ -102,7 +100,7 @@ import ErrorTelemetry from '../../telemetry/node/errorTelemetry.js';
 import { AgentHostLaunchKindEnvVar, readAgentHostLaunchKind, type AgentHostLaunchKind } from '../common/agentHostTelemetry.js';
 
 // Entry point for the agent host utility process.
-// Sets up IPC, logging, and registers agent providers (Copilot).
+// Sets up IPC, logging, and registers agent providers.
 // When VSCODE_AGENT_HOST_PORT or VSCODE_AGENT_HOST_SOCKET_PATH env vars
 // are set, also starts a WebSocket server for external clients.
 
@@ -164,11 +162,10 @@ async function startAgentHost(): Promise<void> {
 	let byokLmBridgeRegistry: ByokLmBridgeRegistry;
 	let proxyResolver: IAgentHostProxyResolver | undefined;
 	// Gate BYOK *use* behind the opt-in `chat.agentHost.byokModels.enabled`
-	// setting, forwarded from the renderer as an env var. The proxy and bridge
-	// registry are always constructed below (so the session launcher can inject
-	// them), but when off they stay inert: the per-connection bridge and the
-	// renderer's BYOK server channel are not wired, so the registry stays empty
-	// and the proxy never binds.
+	// setting, forwarded from the renderer as an env var. The bridge registry is
+	// always constructed below (so providers can inject it), but when off it stays
+	// inert: the per-connection bridge and the renderer's BYOK server channel are
+	// not wired, so the registry stays empty.
 	const byokLmEnabled = isAgentEnabled(process.env[AgentHostByokModelsEnabledEnvVar], true);
 	const hostLaunchKind = readAgentHostLaunchKind(process.env[AgentHostLaunchKindEnvVar]);
 	const connectionTelemetryTracker = disposables.add(new AgentHostClientConnectionTelemetryTracker());
@@ -202,15 +199,13 @@ async function startAgentHost(): Promise<void> {
 		sdkDownloadProgress = agentSdkDownloader.onDidDownloadProgress;
 		const claudeAgentSdkService = instantiationService.createInstance(ClaudeAgentSdkService);
 		diServices.set(IClaudeAgentSdkService, claudeAgentSdkService);
-		// BYOK language-model proxy + bridge registry. Always registered so the
-		// session launcher can inject them, but BYOK *use* is gated: the
-		// per-connection bridge below (and the renderer's server channel) are only
-		// wired when `chat.agentHost.byokModels.enabled` is on, so the registry
-		// stays empty and the proxy never binds when the feature is off.
+		// BYOK language-model bridge registry. Always registered so providers can
+		// inject it, but BYOK *use* is gated: the per-connection bridge below (and
+		// the renderer's server channel) are only wired when
+		// `chat.agentHost.byokModels.enabled` is on, so the registry stays empty
+		// when the feature is off.
 		byokLmBridgeRegistry = new ByokLmBridgeRegistry();
 		diServices.set(IByokLmBridgeRegistry, byokLmBridgeRegistry);
-		const byokLmProxyService = disposables.add(instantiationService.createInstance(ByokLmProxyService));
-		diServices.set(IByokLmProxyService, byokLmProxyService);
 		const agentHostOTelService = disposables.add(instantiationService.createInstance(AgentHostOTelService, fetchFn));
 		diServices.set(IAgentHostOTelService, agentHostOTelService);
 		agentService = new AgentService(logService, fileService, sessionDataService, productService, gitService, rootConfigResource, telemetryService, fileMonitorService, undefined, fetchFn, [createCodexProviderConfiguration(environmentService.userHome)], hostLaunchKind, storageResource);
@@ -257,7 +252,6 @@ async function startAgentHost(): Promise<void> {
 		diServices.set(IClaudeProxyService, claudeProxyService);
 		const codexProxyService = disposables.add(instantiationService.createInstance(CodexProxyService));
 		diServices.set(ICodexProxyService, codexProxyService);
-		agentService.registerProvider(instantiationService.createInstance(CopilotAgent));
 		// Claude and Codex providers are gated on two things:
 		//  1. The user-facing enable toggle (`chat.agentHost.<x>Agent.enabled`,
 		//     forwarded as an env var by the starters). Claude defaults to on,

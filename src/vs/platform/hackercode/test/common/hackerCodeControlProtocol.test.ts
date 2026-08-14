@@ -63,21 +63,33 @@ suite('HackerCode control protocol', () => {
 			windowId: 3
 		});
 
-		assert.throws(() => validateHackerCodeControlRequest({
+		// `assert.throws` with a validator callback is not portable across the
+		// node and browser test shims, so assert on the caught code directly.
+		function expectErrorCode(request: IJsonRpcRequest, target: 'main' | 'renderer', code: HackerCodeControlJsonRpcErrorCode): void {
+			try {
+				validateHackerCodeControlRequest(request, target);
+			} catch (error) {
+				assert.strictEqual((error as JsonRpcError).code, code);
+				return;
+			}
+			assert.fail(`Expected ${request.method} to be rejected with code ${code}`);
+		}
+
+		expectErrorCode({
 			...validRequest,
 			params: { source: 'x'.repeat(HACKERCODE_CONTROL_MAX_EVAL_SOURCE_LENGTH + 1) }
-		}, 'main'), (error: JsonRpcError) => error.code === HackerCodeControlJsonRpcErrorCode.InvalidParams);
+		}, 'main', HackerCodeControlJsonRpcErrorCode.InvalidParams);
 
-		assert.throws(() => validateHackerCodeControlRequest({
+		expectErrorCode({
 			...validRequest,
 			method: 'getState'
-		}, 'renderer'), (error: JsonRpcError) => error.code === HackerCodeControlJsonRpcErrorCode.MethodNotFound);
+		}, 'renderer', HackerCodeControlJsonRpcErrorCode.MethodNotFound);
 
-		assert.throws(() => validateHackerCodeControlRequest({
+		expectErrorCode({
 			...validRequest,
 			method: 'reload',
 			params: { revisionId: 'pristine' }
-		}, 'main'), (error: JsonRpcError) => error.code === HackerCodeControlJsonRpcErrorCode.InvalidParams);
+		}, 'main', HackerCodeControlJsonRpcErrorCode.InvalidParams);
 
 		assert.deepStrictEqual(validateHackerCodeControlRequest({
 			...validRequest,

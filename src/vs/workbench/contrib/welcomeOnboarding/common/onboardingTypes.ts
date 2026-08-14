@@ -10,7 +10,6 @@ import { IProductOnboardingTheme } from '../../../../base/common/product.js';
  * Step identifiers for the onboarding walkthrough.
  */
 export const enum OnboardingStepId {
-	SignIn = 'onboarding.signIn',
 	Personalize = 'onboarding.personalize',
 	AiPreference = 'onboarding.aiPreference',
 }
@@ -20,8 +19,6 @@ export const enum OnboardingStepId {
  */
 export function getOnboardingStepTitle(stepId: OnboardingStepId): string {
 	switch (stepId) {
-		case OnboardingStepId.SignIn:
-			return localize('onboarding.step.signIn', "Sign In");
 		case OnboardingStepId.Personalize:
 			return localize('onboarding.step.personalize', "Make It Yours");
 		case OnboardingStepId.AiPreference:
@@ -34,8 +31,6 @@ export function getOnboardingStepTitle(stepId: OnboardingStepId): string {
  */
 export function getOnboardingStepSubtitle(stepId: OnboardingStepId): string {
 	switch (stepId) {
-		case OnboardingStepId.SignIn:
-			return localize('onboarding.step.signIn.subtitle', "Sync settings, unlock AI features, and connect to GitHub");
 		case OnboardingStepId.Personalize:
 			return localize('onboarding.step.personalize.subtitle', "Choose your theme and keyboard mapping");
 		case OnboardingStepId.AiPreference:
@@ -47,7 +42,6 @@ export function getOnboardingStepSubtitle(stepId: OnboardingStepId): string {
  * Ordered step IDs for the onboarding flow.
  */
 export const ONBOARDING_STEPS: readonly OnboardingStepId[] = [
-	OnboardingStepId.SignIn,
 	OnboardingStepId.Personalize,
 ];
 
@@ -104,48 +98,3 @@ export const ONBOARDING_AI_PREFERENCE_OPTIONS: readonly IAiPreferenceOption[] = 
  * Storage key for persisting onboarding completion state.
  */
 export const ONBOARDING_STORAGE_KEY = 'welcomeOnboarding.state';
-
-/**
- * Regex matching a single-word GHE instance slug (e.g. "octocat").
- * Only allows characters valid in DNS hostnames (letters, digits, hyphens).
- */
-export const GHE_DOMAIN_REGEX = /^[a-zA-Z0-9-]+$/;
-
-/**
- * Regex matching a full GHE instance URI (e.g. "https://octocat.ghe.com").
- */
-export const GHE_FULL_URI_REGEX = /^(https:\/\/)?([a-zA-Z0-9-]+\.)*[a-zA-Z0-9-]+\.ghe\.com\/?$/;
-
-export const enum GheParseResultKind {
-	Empty = 'empty',
-	SingleWord = 'singleWord',
-	FullUri = 'fullUri',
-	Invalid = 'invalid',
-}
-
-export type GheParseResult =
-	| { readonly kind: GheParseResultKind.Empty }
-	| { readonly kind: GheParseResultKind.SingleWord; readonly resolvedUri: string }
-	| { readonly kind: GheParseResultKind.FullUri; readonly resolvedUri: string }
-	| { readonly kind: GheParseResultKind.Invalid };
-
-/**
- * Parses a GHE instance input value and returns the result kind and resolved URI.
- */
-export function parseGheInstanceInput(value: string): GheParseResult {
-	const trimmed = value.trim();
-	if (!trimmed) {
-		return { kind: GheParseResultKind.Empty };
-	}
-
-	if (GHE_DOMAIN_REGEX.test(trimmed)) {
-		return { kind: GheParseResultKind.SingleWord, resolvedUri: `https://${trimmed}.ghe.com` };
-	}
-
-	if (GHE_FULL_URI_REGEX.test(trimmed)) {
-		const resolvedUri = trimmed.toLowerCase().startsWith('https://') ? trimmed : `https://${trimmed}`;
-		return { kind: GheParseResultKind.FullUri, resolvedUri };
-	}
-
-	return { kind: GheParseResultKind.Invalid };
-}

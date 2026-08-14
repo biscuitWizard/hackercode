@@ -26,7 +26,7 @@ import { IsSessionsWindowContext } from '../../../../../workbench/common/context
 import { ISessionsProvidersService } from '../../../../services/sessions/browser/sessionsProvidersService.js';
 import { ISession, ISessionAgentRef, SessionStatus } from '../../../../services/sessions/common/session.js';
 import { ISessionsService } from '../../../../services/sessions/browser/sessionsService.js';
-import { ModePicker, ModePickerModel } from '../../copilotChatSessions/browser/modePicker.js';
+import { ModePicker, ModePickerModel } from '../../shared/browser/modePicker.js';
 import { ISessionContext } from '../../../../services/sessions/browser/sessionContext.js';
 import { IInstantiationService } from '../../../../../platform/instantiation/common/instantiation.js';
 import { IAction } from '../../../../../base/common/actions.js';

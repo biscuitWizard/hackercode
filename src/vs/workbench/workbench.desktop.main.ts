@@ -45,6 +45,7 @@ import './services/title/electron-browser/titleService.js';
 import './services/host/electron-browser/nativeHostService.js';
 import '../platform/meteredConnection/electron-browser/meteredConnectionService.js';
 import '../platform/hackercode/electron-browser/hackerCodeControlService.js';
+import '../platform/hackercode/electron-browser/hackerCodeChatRelayService.js';
 import './services/request/electron-browser/requestService.js';
 import './services/clipboard/electron-browser/clipboardService.js';
 import './services/contextmenu/electron-browser/contextmenuService.js';
@@ -180,7 +181,6 @@ import './contrib/localHistory/electron-browser/localHistory.contribution.js';
 import './contrib/hackercode/browser/hackercode.contribution.js';
 
 // HackerCode Agent
-import './contrib/hackercodeAgent/electron-browser/hackerCodeAgentEndpointService.js';
 import './contrib/hackercodeAgent/browser/hackercodeAgent.contribution.js';
 
 // Merge Editor

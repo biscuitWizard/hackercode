@@ -5,7 +5,7 @@
 
 import assert from 'assert';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../base/test/common/utils.js';
-import { isRestrictedTelemetryEnabled, parseCopilotTokenFields } from '../../node/copilot/copilotTokenFields.js';
+import { isRestrictedTelemetryEnabled, parseCopilotTokenFields } from '../../node/shared/copilotTokenFields.js';
 
 suite('copilotTokenFields', () => {
 

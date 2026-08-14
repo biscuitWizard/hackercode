@@ -9,7 +9,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Application, ApplicationOptions, Logger } from '../../../../automation';
 import { createApp, dumpFailureDiagnostics, getCopilotSmokeTestEnv, getMockLlmServerPath, getMockLlmServerUrl, installAppAfterHandler, installDiagnosticsHandler, MockLlmServer, suiteCrashPath, suiteLogsPath } from '../../utils';
-import { shellEchoResponseMatcher, shellEchoScenario } from '../chat/shellScenarios';
 
 // Selector for the send button in the Agents Window new-session homepage.
 // Kept in sync with `SEND_BUTTON_ENABLED` in `test/automation/src/agentsWindow.ts`
@@ -37,261 +36,7 @@ const CODEX_REPLY = 'MOCKED_CODEX_RESPONSE';
 const CODEX_WARMUP_SCENARIO_ID = 'smoke-hello-codex-warmup';
 const CODEX_WARMUP_REPLY = 'MOCKED_CODEX_WARMUP_RESPONSE';
 
-const AGENT_HOST_SCENARIO_ID = 'smoke-hello-agent-host';
-const AGENT_HOST_REPLY = 'MOCKED_AGENT_HOST_RESPONSE';
-
-const AGENT_HOST_SANDBOX_SCENARIO_ID = 'smoke-hello-agent-host-sandbox';
-const AGENT_HOST_SANDBOX_REPLY = 'MOCKED_AGENT_HOST_SANDBOX_RESPONSE';
-
-const AGENT_HOST_SDK_SANDBOX_SCENARIO_ID = 'smoke-hello-agent-host-sdk-sandbox';
-const AGENT_HOST_SDK_SANDBOX_REPLY = 'MOCKED_AGENT_HOST_SDK_SANDBOX_RESPONSE';
-
-// Lightweight throwaway scenario used by {@link warmUpAgentHostModel} to
-// prime the CLI model list before the real assertion. Registered in every
-// AgentHost suite by {@link setupAgentHostSuite}.
-const AGENT_HOST_WARMUP_SCENARIO_ID = 'smoke-hello-agent-host-warmup';
-const AGENT_HOST_WARMUP_REPLY = 'MOCKED_AGENT_HOST_WARMUP_RESPONSE';
-
 export function setup(logger: Logger) {
-
-	describe('Agents Window (local AgentHost)', () => {
-
-		const agentHost = setupAgentHostSuite(logger, {
-			serverLabel: 'AgentHost',
-			registerScenarios: ({ ScenarioBuilder, registerScenario }) => {
-				registerScenario(AGENT_HOST_SCENARIO_ID, new ScenarioBuilder().emit(AGENT_HOST_REPLY).build());
-				registerScenario(AGENT_HOST_SANDBOX_SCENARIO_ID, shellEchoScenario(AGENT_HOST_SANDBOX_REPLY));
-			},
-			settings: {
-				// AgentHost-side sandbox: customTerminalTool gates the AgentHost’s own
-				// shell tools (which honor chat.agent.sandbox.*), and chat.agent.sandbox.enabled
-				// turns the sandbox on for the auto-approve path used by the sandbox test.
-				'chat.agentHost.customTerminalTool.enabled': true,
-				'chat.agent.sandbox.enabled': 'on',
-				// CI macOS runners commonly resolve the default shell as /bin/sh, which
-				// exercises the sentinel-based completion parser path. Force the same
-				// profile on macOS so local runs cover the same branch.
-				...(process.platform === 'darwin' ? {
-					'terminal.integrated.profiles.osx': {
-						'Smoke AgentHost Sandbox sh': { path: '/bin/sh' },
-					},
-					'terminal.integrated.defaultProfile.osx': 'Smoke AgentHost Sandbox sh',
-				} : {}),
-			},
-		});
-
-		it('Test Copilot CLI session via AgentHost', async function () {
-			this.timeout(5 * 60 * 1000);
-
-			const app = this.app as Application;
-
-			try {
-				await warmUpAgentHostModel(app, logger, 'Agents Window (AgentHost)');
-
-				const requestsBefore = agentHost.mockServer.requestCount();
-				await app.workbench.agentsWindow.submitNewSessionPrompt(`hello world [scenario:${AGENT_HOST_SCENARIO_ID}]`);
-
-				const text = await app.workbench.agentsWindow.waitForAssistantText(AGENT_HOST_REPLY);
-				logger.log(`Agents Window (AgentHost) response: ${text}`);
-
-				assert.ok(
-					agentHost.mockServer.requestCount() > requestsBefore,
-					'expected the mock LLM server to have received a new request from the AgentHost session'
-				);
-
-				// Confirm the request flowed through the AgentHost process (not
-				// the renderer-side Copilot Chat extension fallback) by checking
-				// for a `chat/turnStarted` frame in the AHP JSONL transcript.
-				// In the multi-chat protocol turns are dispatched as chat
-				// actions on the session's default chat channel. The transcript
-				// is written through an async queue (see AhpJsonlLogger), so the
-				// frame may not be on disk yet even after the assistant reply has
-				// rendered — poll briefly.
-				const ahpLogDir = path.join(agentHost.logsPath, 'ahp');
-				const ahpFrames = await waitForLogContent(() => readAhpFrames(ahpLogDir), '"type":"chat/turnStarted"');
-				assert.ok(
-					ahpFrames.includes('"type":"chat/turnStarted"'),
-					`expected the AgentHost process to have received a chat/turnStarted dispatchAction (checked ${ahpJsonlFiles(ahpLogDir).length} jsonl files under ${ahpLogDir}); if missing, the renderer-side extension likely served the reply instead`
-				);
-			} catch (error) {
-				logger.log(`Agents Window (AgentHost) FAILURE: ${error instanceof Error ? error.stack ?? error.message : String(error)}`);
-				await dumpFailureDiagnostics(app, logger, 'Agents Window (AgentHost)', { sendButtonSelector: AGENTS_SEND_BUTTON_SELECTOR });
-				throw error;
-			}
-		});
-
-		it('Test Copilot CLI session via AgentHost (sandbox)', async function () {
-			// See the Copilot CLI sandbox test above for the rationale on
-			// platform gating and where to find logs when debugging CI runs.
-			// The AgentHost-side sandbox log we assert on is
-			// `<logsPath>/agenthost.log` (the utility-process log), produced by
-			// CopilotAgentSession when it auto-approves a sandboxed shell call.
-			if (process.platform === 'win32') {
-				this.skip();
-			}
-
-			this.timeout(5 * 60 * 1000);
-
-			const app = this.app as Application;
-
-			try {
-				await app.workbench.agentsWindow.startNewSession();
-				await app.workbench.agentsWindow.waitForNewSessionView();
-				await app.workbench.agentsWindow.selectSessionType('Copilot');
-
-				const requestsBefore = agentHost.mockServer.requestCount();
-				await app.workbench.agentsWindow.submitNewSessionPrompt(`hello world [scenario:${AGENT_HOST_SANDBOX_SCENARIO_ID}]`);
-
-				// Match the JSON `output` field of the tool result in the final
-				// response, not the `echo <reply>` command preview — see
-				// shellEchoScenario / shellEchoResponseMatcher.
-				const text = await app.workbench.agentsWindow.waitForAssistantText(shellEchoResponseMatcher(AGENT_HOST_SANDBOX_REPLY), 120_000);
-				logger.log(`Agents Window (AgentHost sandbox) response: ${text}`);
-
-				assert.ok(
-					agentHost.mockServer.requestCount() > requestsBefore,
-					'expected the mock LLM server to have received a new request from the AgentHost sandbox session'
-				);
-
-				// Confirm the command actually ran through the AgentHost's OWN shell
-				// engine (the `createShellTools` path, wrapped by its
-				// TerminalSandboxEngine) — not the SDK. Evidence in `agenthost.log`:
-				//   - `Auto-approving sandboxed shell command` — the engine reported
-				//     the command is sandboxed by default, so the prompt was skipped.
-				//   - `[ShellManager] Created <shell> shell` — the AgentHost-provided
-				//     shell tool executed the command (emitted when it runs, i.e.
-				//     after auto-approve, so poll for this one).
-				//   - NO `Applied SDK sandboxConfig` — the SDK sandbox path was not
-				//     taken (custom terminal tool is on, so we don't push to the SDK).
-				// The log is written through an async queue, so poll until it lands.
-				const agentHostLogPath = path.join(agentHost.logsPath, 'agenthost.log');
-				const engineShellRun = /\[ShellManager\] Created \w+ shell /;
-				const agentHostLog = await waitForLogContent(() => readFileIfExists(agentHostLogPath), engineShellRun);
-				assert.match(
-					agentHostLog,
-					/\[Copilot:[^\]]+\] Auto-approving sandboxed shell command for tool call /,
-					`expected an "Auto-approving sandboxed shell command" entry in ${agentHostLogPath}`
-				);
-				assert.match(
-					agentHostLog,
-					engineShellRun,
-					`expected the AgentHost's own shell engine ([ShellManager]) to have run the command in ${agentHostLogPath}`
-				);
-				if (process.platform === 'darwin') {
-					assert.match(
-						agentHostLog,
-						/\[ShellManager\] Created \w+ shell .*executable=\/bin\/sh\)/,
-						`expected the macOS AgentHost sandbox smoke test to run under /bin/sh (CI parity and sentinel-parser coverage), in ${agentHostLogPath}`
-					);
-				}
-				assert.doesNotMatch(
-					agentHostLog,
-					/Applied SDK sandboxConfig/,
-					`did not expect the SDK sandbox path (Applied SDK sandboxConfig) when the custom terminal tool is enabled, in ${agentHostLogPath}`
-				);
-			} catch (error) {
-				logger.log(`Agents Window (AgentHost sandbox) FAILURE: ${error instanceof Error ? error.stack ?? error.message : String(error)}`);
-				await dumpFailureDiagnostics(app, logger, 'Agents Window (AgentHost sandbox)', { sendButtonSelector: AGENTS_SEND_BUTTON_SELECTOR });
-				throw error;
-			}
-		});
-	});
-
-	describe('Agents Window (local AgentHost, SDK sandbox)', () => {
-
-		// Variant of the AgentHost suite that leaves
-		// `chat.agentHost.customTerminalTool.enabled` at its default (false), so
-		// the SDK’s built-in shell tool runs commands. The AgentHost forwards
-		// `chat.agent.sandbox.*` into the SDK via `session.options.update`
-		// (mirroring how the Copilot extension configures the CLI sandbox), so
-		// shell commands still run mxc-wrapped and the SDK’s pre-call shell
-		// permission prompt is auto-approved on the same code path as the
-		// custom-terminal-tool variant above.
-
-		const agentHost = setupAgentHostSuite(logger, {
-			serverLabel: 'AgentHost SDK sandbox',
-			registerScenarios: ({ registerScenario }) => {
-				registerScenario(AGENT_HOST_SDK_SANDBOX_SCENARIO_ID, shellEchoScenario(AGENT_HOST_SDK_SANDBOX_REPLY));
-			},
-			settings: {
-				// customTerminalTool intentionally OFF (default) — the SDK runs
-				// the shell tool, and the AgentHost is expected to forward
-				// `chat.agent.sandbox.*` into the SDK so commands still run
-				// sandboxed. The SDK-sandbox gate defaults to 'off'; set it
-				// to 'on' explicitly so the test exercises the SDK sandbox
-				// override path.
-				'chat.agentHost.sdkSandbox.enabled': 'on',
-				'chat.agent.sandbox.enabled': 'on',
-			},
-		});
-
-		it('Test Copilot CLI session via AgentHost (SDK sandbox)', async function () {
-			// See the Copilot CLI sandbox test above for the rationale on
-			// platform gating and where to find logs when debugging CI runs.
-			// The AgentHost-side sandbox log we assert on is
-			// `<logsPath>/agenthost.log` (the utility-process log), produced by
-			// CopilotAgentSession when it auto-approves a sandboxed shell call.
-			if (process.platform === 'win32') {
-				this.skip();
-			}
-
-			this.timeout(5 * 60 * 1000);
-
-			const app = this.app as Application;
-
-			try {
-				await warmUpAgentHostModel(app, logger, 'Agents Window (AgentHost SDK sandbox)');
-
-				const requestsBefore = agentHost.mockServer.requestCount();
-				await app.workbench.agentsWindow.submitNewSessionPrompt(`hello world [scenario:${AGENT_HOST_SDK_SANDBOX_SCENARIO_ID}]`);
-
-				// Match the JSON `output` field of the tool result in the final
-				// response, not the `echo <reply>` command preview — see
-				// shellEchoScenario / shellEchoResponseMatcher.
-				const text = await app.workbench.agentsWindow.waitForAssistantText(shellEchoResponseMatcher(AGENT_HOST_SDK_SANDBOX_REPLY), 120_000);
-				logger.log(`Agents Window (AgentHost SDK sandbox) response: ${text}`);
-
-				assert.ok(
-					agentHost.mockServer.requestCount() > requestsBefore,
-					'expected the mock LLM server to have received a new request from the AgentHost SDK sandbox session'
-				);
-
-				// Confirm the command ran through the SDK's built-in shell under the
-				// sandbox policy we pushed — NOT the AgentHost's own engine. Evidence
-				// in `agenthost.log`:
-				//   1. `Applied SDK sandboxConfig via session.options.update` — the
-				//      AgentHost pushed the mxc policy to the SDK.
-				//   2. `Auto-approving sandboxed shell command` — the SDK-side branch
-				//      of `_isShellSandboxedByDefault` confirmed the sandbox config
-				//      resolves to enabled, so the pre-call prompt was skipped.
-				//   3. NO `[ShellManager]` line — the AgentHost provided no shell tool
-				//      (customTerminalTool is off), so the SDK, not our engine, ran it.
-				// Poll for the auto-approve entry (the later of 1 & 2).
-				const agentHostLogPath = path.join(agentHost.logsPath, 'agenthost.log');
-				const autoApprove = /\[Copilot:[^\]]+\] Auto-approving sandboxed shell command for tool call /;
-				const agentHostLog = await waitForLogContent(() => readFileIfExists(agentHostLogPath), autoApprove);
-				assert.match(
-					agentHostLog,
-					/\[Copilot:[^\]]+\] Applied SDK sandboxConfig via session\.options\.update/,
-					`expected an "Applied SDK sandboxConfig" entry in ${agentHostLogPath}`
-				);
-				assert.match(
-					agentHostLog,
-					autoApprove,
-					`expected an "Auto-approving sandboxed shell command" entry in ${agentHostLogPath}`
-				);
-				assert.doesNotMatch(
-					agentHostLog,
-					/\[ShellManager\] Created \w+ shell /,
-					`did not expect the AgentHost's own shell engine ([ShellManager]) to run the command on the SDK sandbox path, in ${agentHostLogPath}`
-				);
-			} catch (error) {
-				logger.log(`Agents Window (AgentHost SDK sandbox) FAILURE: ${error instanceof Error ? error.stack ?? error.message : String(error)}`);
-				await dumpFailureDiagnostics(app, logger, 'Agents Window (AgentHost SDK sandbox)', { sendButtonSelector: AGENTS_SEND_BUTTON_SELECTOR });
-				throw error;
-			}
-		});
-	});
 
 	describe('Agents Window (Codex)', () => {
 
@@ -411,35 +156,6 @@ export function setup(logger: Logger) {
 }
 
 /**
- * Primes a freshly-spawned AgentHost process's CLI model list to avoid the
- * cold-start "No model available" race (github/copilot-agent-runtime#9876):
- * the very first query in the process lifetime can reach the CLI before its
- * model list has resolved, surfacing as a `session/error`. A throwaway
- * session resolves it because the model list is cached by then.
- *
- * Assumes the Agents Window is showing a new-session view. Sends a throwaway
- * prompt, ignores its outcome, then leaves a fresh new-session view with
- * Agent Host Copilot selected so the caller can submit the real prompt
- * against an already-warmed model list.
- */
-async function warmUpAgentHostModel(app: Application, logger: Logger, label: string): Promise<void> {
-	await app.workbench.agentsWindow.waitForNewSessionView();
-	await app.workbench.agentsWindow.selectSessionType('Copilot');
-	await app.workbench.agentsWindow.submitNewSessionPrompt(`hello world [scenario:${AGENT_HOST_WARMUP_SCENARIO_ID}]`);
-	try {
-		await app.workbench.agentsWindow.waitForAssistantText(AGENT_HOST_WARMUP_REPLY, 30_000);
-	} catch (error) {
-		// Ignore — the warm-up itself may hit the cold-start race; the caller's
-		// real attempt runs against an already-warmed model list.
-		logger.log(`${label} warm-up attempt did not produce the expected reply (likely the cold-start race); proceeding with the real attempt. Reason: ${error instanceof Error ? error.message : String(error)}`);
-	}
-	await app.workbench.agentsWindow.startNewSession();
-	await app.workbench.agentsWindow.waitForNewSessionView();
-	await app.workbench.agentsWindow.selectSessionType('Copilot');
-}
-
-
-/**
  * Pre-pays the Codex session cold-start cost: the first Codex session in a
  * fresh agent host has to spawn the native `codex app-server` binary and
  * resolve its model list before the first `/responses` request can complete.
@@ -498,7 +214,6 @@ function setupAgentHostSuite(logger: Logger, config: {
 		const { startServer, ScenarioBuilder, registerScenario } = require(getMockLlmServerPath());
 
 		registerScenario('text-only', new ScenarioBuilder().emit('OK').build());
-		registerScenario(AGENT_HOST_WARMUP_SCENARIO_ID, new ScenarioBuilder().emit(AGENT_HOST_WARMUP_REPLY).build());
 		config.registerScenarios({ ScenarioBuilder, registerScenario });
 
 		mockServer = await startServer(0, mockServerStartOptions((msg: string) => logger.log(msg)));
@@ -599,11 +314,6 @@ async function waitForLogContent(readContent: () => string, matcher: RegExp | st
 		content = readContent();
 	}
 	return content;
-}
-
-/** Reads a file, returning '' if it does not exist yet. */
-function readFileIfExists(filePath: string): string {
-	return fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';
 }
 
 /** Lists the `.jsonl` transcript files in an AHP log directory. */

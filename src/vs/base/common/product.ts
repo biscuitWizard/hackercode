@@ -446,11 +446,13 @@ export interface IDefaultChatAgent {
 	readonly providerUriSetting: string;
 	readonly providerScopes: string[][];
 
-	readonly entitlementUrl: string;
-	readonly entitlementSignupLimitedUrl: string;
-	readonly tokenEntitlementUrl: string;
-	readonly mcpRegistryDataUrl: string;
-	readonly managedSettingsUrl: string;
+	// Absent unless the product ships a hosted account backend; when unset the
+	// corresponding entitlement/registry/managed-settings fetches are skipped.
+	readonly entitlementUrl?: string;
+	readonly entitlementSignupLimitedUrl?: string;
+	readonly tokenEntitlementUrl?: string;
+	readonly mcpRegistryDataUrl?: string;
+	readonly managedSettingsUrl?: string;
 
 	readonly chatQuotaExceededContext: string;
 	readonly completionsQuotaExceededContext: string;

@@ -18,8 +18,8 @@ export interface IResolvedHackerCodeAgentProvider {
 
 /**
  * Joins the non-secret provider configuration with API keys from secret
- * storage. This is the shape the driver expects on `setProviders`; the
- * driver holds it only in memory and never persists the key to disk itself.
+ * storage. Keys are never written back to settings, so a resolved provider
+ * must stay in memory.
  */
 export async function resolveHackerCodeAgentProviders(
 	configurationService: IConfigurationService,

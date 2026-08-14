@@ -49,10 +49,10 @@ interface IDefaultAccountConfig {
 		readonly enterpriseProviderUriSetting: string;
 		readonly scopes: string[][];
 	};
-	readonly tokenEntitlementUrl: string;
-	readonly entitlementUrl: string;
-	readonly mcpRegistryDataUrl: string;
-	readonly managedSettingsUrl: string;
+	readonly tokenEntitlementUrl: string | undefined;
+	readonly entitlementUrl: string | undefined;
+	readonly mcpRegistryDataUrl: string | undefined;
+	readonly managedSettingsUrl: string | undefined;
 }
 
 export const DEFAULT_ACCOUNT_SIGN_IN_COMMAND = 'workbench.actions.accounts.signIn';

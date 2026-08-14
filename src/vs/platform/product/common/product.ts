@@ -88,8 +88,8 @@ else {
 			licenseUrl: 'https://github.com/microsoft/vscode/blob/main/LICENSE.txt',
 			serverLicenseUrl: 'https://github.com/microsoft/vscode/blob/main/LICENSE.txt',
 			defaultChatAgent: {
-				extensionId: 'GitHub.copilot',
-				chatExtensionId: 'GitHub.copilot-chat',
+				extensionId: 'hackercode.agent',
+				chatExtensionId: 'hackercode.agent',
 				provider: {
 					default: {
 						id: 'github',

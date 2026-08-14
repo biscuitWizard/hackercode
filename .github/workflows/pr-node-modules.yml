@@ -97,9 +97,6 @@ jobs:
       - name: Compile application
         run: npm run gulp core-ci
 
-      - name: Package built-in Copilot extension
-        run: npm run gulp compile-copilot-extension-build
-
       - name: Build packaged application
         run: npm run gulp vscode-${{ matrix.platform }}-${{ matrix.arch }}-min-ci
 

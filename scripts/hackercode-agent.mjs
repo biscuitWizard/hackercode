@@ -3,23 +3,25 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { readFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { connectHackerCodeControl, readControlMetadata } from './hackercode-control.mjs';
 import { activateRevisionAndWaitHealthy } from './hackercode-agent/control/activation.mjs';
 import { HackerCodeControlSession } from './hackercode-agent/control/session.mjs';
-import { AgentDriver } from './hackercode-agent/driver.mjs';
-import { startAgentUiServer } from './hackercode-agent/ui/server.mjs';
 
-const HELP = `HackerCode agentic harness driver
+/**
+ * The headless control-plane CLI. The agent loop itself lives in the workbench
+ * (src/vs/workbench/contrib/hackercodeAgent), which drives the built-in chat
+ * directly; this script exists only for checks that must run without a chat
+ * session, from a terminal or CI.
+ */
+const HELP = `HackerCode control-plane CLI
 
 Usage:
   npm run hackercode:agent -- --control-file <path> <command> [options]
 
 The control file may instead be supplied with HACKERCODE_CONTROL_FILE. This
-driver never prints the HackerCode control token, the agent UI token, or
-either authenticated URL.
+CLI never prints the HackerCode control token or the authenticated URL.
 
 Commands:
   selftest
@@ -27,12 +29,6 @@ Commands:
       status-bar/command patch, activate it, wait for a healthy boot, verify
       the installed command through eval, then revert to pristine. Prints one
       JSON result and exits nonzero on any failed stage.
-  serve [--providers-file <path>]
-      Starts the loopback agent UI WebSocket server (writing
-      <user-data-dir>/hackercode/agent.json) and the agent loop, and keeps
-      running until terminated. --providers-file is a JSON array of
-      { id, label, baseUrl, apiKey?, models } used to seed providers; the
-      workbench settings view can also push providers at runtime.
 
 Global options:
   --control-file <path>   Explicit token-bearing control.json path.
@@ -63,23 +59,17 @@ async function main() {
 	assertLiveControlPid(metadata.pid);
 	const client = await connectHackerCodeControl(metadata, { timeoutMs });
 	const session = new HackerCodeControlSession(client);
-	const userDataDir = dirname(dirname(resolve(controlFile)));
 
 	try {
 		switch (command) {
 			case 'selftest':
 				await runSelftest(session);
 				return;
-			case 'serve':
-				await runServe(session, userDataDir, options);
-				return;
 			default:
 				throw new Error(`Unknown command: ${command}`);
 		}
 	} finally {
-		if (command !== 'serve') {
-			session.close();
-		}
+		session.close();
 	}
 }
 
@@ -151,66 +141,6 @@ async function runSelftest(session) {
 			verifiedMarker: marker,
 			revertedToPristine: revert.state.activeRevisionId === 'pristine'
 		}
-	});
-}
-
-async function runServe(session, userDataDir, options) {
-	const providers = options.has('providers-file')
-		? await loadProviders(resolve(options.get('providers-file')))
-		: [];
-
-	const driver = new AgentDriver({
-		controlSession: session,
-		userDataDir,
-		uiServer: undefined,
-		providers,
-		logger: { warn: message => process.stderr.write(`[hackercode-agent] ${message}\n`) }
-	});
-	driver.setProviders(providers);
-
-	const uiServer = await startAgentUiServer({
-		userDataDir,
-		onMessage: (connectionId, message) => void driver.handleMessage(connectionId, message),
-		logger: driver.logger
-	});
-	driver.uiServer = uiServer;
-
-	process.stdout.write(`HackerCode agent driver listening on 127.0.0.1:${uiServer.port} (token withheld)\n`);
-
-	let shuttingDown = false;
-	const shutdown = async () => {
-		if (shuttingDown) {
-			return;
-		}
-		shuttingDown = true;
-		await uiServer.dispose();
-		session.close();
-		process.exit(0);
-	};
-	process.on('SIGINT', shutdown);
-	process.on('SIGTERM', shutdown);
-
-	// Keep the process alive; the WebSocket server and control client hold
-	// their own listeners.
-	await new Promise(() => { });
-}
-
-async function loadProviders(path) {
-	const raw = JSON.parse(await readFile(path, 'utf8'));
-	if (!Array.isArray(raw)) {
-		throw new Error('Providers file must contain a JSON array');
-	}
-	return raw.map(entry => {
-		if (typeof entry?.id !== 'string' || typeof entry?.baseUrl !== 'string') {
-			throw new Error('Each provider requires id and baseUrl');
-		}
-		return {
-			id: entry.id,
-			label: typeof entry.label === 'string' ? entry.label : entry.id,
-			baseUrl: entry.baseUrl,
-			apiKey: typeof entry.apiKey === 'string' ? entry.apiKey : undefined,
-			models: Array.isArray(entry.models) ? entry.models : []
-		};
 	});
 }
 
