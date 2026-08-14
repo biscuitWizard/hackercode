@@ -179,6 +179,10 @@ import './contrib/localHistory/electron-browser/localHistory.contribution.js';
 // HackerCode
 import './contrib/hackercode/browser/hackercode.contribution.js';
 
+// HackerCode Agent
+import './contrib/hackercodeAgent/electron-browser/hackerCodeAgentEndpointService.js';
+import './contrib/hackercodeAgent/browser/hackercodeAgent.contribution.js';
+
 // Merge Editor
 import './contrib/mergeEditor/electron-browser/mergeEditor.contribution.js';
 
