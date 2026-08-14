@@ -24,6 +24,26 @@ export interface IHackerCodeChatEndpoint {
 	readonly apiKey?: string;
 }
 
+/**
+ * Routes a provider's docs tend to put on the URL people copy out of them.
+ * `baseUrl` is the API root every route hangs off, but what a user has in
+ * front of them is usually the full chat completions URL, and appending
+ * `/chat/completions` to that produces a 404 with no hint as to why.
+ */
+const ROUTE_SUFFIXES = ['/chat/completions', '/completions', '/models'];
+
+export function normalizeChatBaseUrl(baseUrl: string): string {
+	let root = baseUrl.trim().replace(/\/+$/u, '');
+	const lower = root.toLowerCase();
+	for (const suffix of ROUTE_SUFFIXES) {
+		if (lower.endsWith(suffix)) {
+			root = root.slice(0, root.length - suffix.length).replace(/\/+$/u, '');
+			break;
+		}
+	}
+	return root;
+}
+
 export interface IHackerCodeWireToolCall {
 	id: string;
 	readonly type: 'function';

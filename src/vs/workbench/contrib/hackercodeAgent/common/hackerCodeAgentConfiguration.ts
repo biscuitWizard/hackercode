@@ -31,7 +31,10 @@ Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Configuration).regis
 			type: 'array',
 			scope: ConfigurationScope.APPLICATION,
 			tags: ['chat'],
-			markdownDescription: localize('hackerCodeAgent.providers.markdownDescription', "OpenAI-compatible chat completions endpoints for the HackerCode agent. API keys are stored in OS-backed secret storage, never in this setting.\n\n[Add a provider…](command:hackercodeAgent.addProvider)  •  [Manage API keys…](command:hackercodeAgent.manageProviders)"),
+			// The settings editor renders an array of objects as "Edit in
+			// settings.json" and nothing else, so the list of configured
+			// providers lives behind the manage command instead.
+			markdownDescription: localize('hackerCodeAgent.providers.markdownDescription', "OpenAI-compatible chat completions endpoints for the HackerCode agent. API keys are stored in OS-backed secret storage, never in this setting.\n\n[Manage providers…](command:hackercodeAgent.manageProviders)  •  [Add a provider…](command:hackercodeAgent.addProvider)  •  [Show models…](command:workbench.action.chat.manage)"),
 			default: [],
 			items: {
 				type: 'object',

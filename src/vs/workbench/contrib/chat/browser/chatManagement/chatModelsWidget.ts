@@ -1636,12 +1636,7 @@ export class ChatModelsWidget extends Disposable {
 	}
 
 	private async openLanguageModelProviderExtensionsSearch(): Promise<void> {
-		const activeModalEditorPart = this.editorGroupsService.activeModalEditorPart;
-		const isInModalEditor = !!activeModalEditorPart && this.editorGroupsService.getPart(this.editorGroupsService.activeGroup) === activeModalEditorPart;
-		if (isInModalEditor) {
-			await this.commandService.executeCommand(CLOSE_MODAL_EDITOR_COMMAND_ID);
-		}
-
+		await this.closeModalEditorIfActive();
 		await this.extensionsWorkbenchService.openSearch(`tag:"${LANGUAGE_MODEL_CHAT_PROVIDER_EXTENSION_TAG}"`, false);
 	}
 
@@ -1652,8 +1647,25 @@ export class ChatModelsWidget extends Disposable {
 	}
 
 	private async addModelsForVendor(vendor: ILanguageModelProviderDescriptor): Promise<void> {
-		await this.languageModelsService.configureLanguageModelsProviderGroup(vendor.vendor);
+		if (vendor.managementCommand) {
+			// `configureLanguageModelsProviderGroup` only re-resolves models for
+			// these vendors, so going through it here makes the button look
+			// dead. The vendor's own UI is also hidden behind the modal editor
+			// if that is what we are running inside, so step out of it first.
+			await this.closeModalEditorIfActive();
+			await this.commandService.executeCommand(vendor.managementCommand, vendor.vendor);
+		} else {
+			await this.languageModelsService.configureLanguageModelsProviderGroup(vendor.vendor);
+		}
 		await this.viewModel.refresh();
+	}
+
+	private async closeModalEditorIfActive(): Promise<void> {
+		const activeModalEditorPart = this.editorGroupsService.activeModalEditorPart;
+		const isInModalEditor = !!activeModalEditorPart && this.editorGroupsService.getPart(this.editorGroupsService.activeGroup) === activeModalEditorPart;
+		if (isInModalEditor) {
+			await this.commandService.executeCommand(CLOSE_MODAL_EDITOR_COMMAND_ID);
+		}
 	}
 
 	public layout(height: number, width: number): void {

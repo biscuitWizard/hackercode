@@ -10,7 +10,8 @@ import {
 	IHackerCodeAssistantMessage,
 	IHackerCodeChatEndpoint,
 	IHackerCodeWireTool,
-	IHackerCodeWireToolCall
+	IHackerCodeWireToolCall,
+	normalizeChatBaseUrl
 } from '../common/hackerCodeChat.js';
 
 /**
@@ -23,9 +24,9 @@ import {
  * because a browser context cannot reach these endpoints — see
  * `common/hackerCodeChat.ts`.
  *
- * `baseUrl` is used verbatim with `/chat/completions` and `/models` appended,
- * matching the OpenAI convention that many self-hosted and third-party
- * servers copy.
+ * `/chat/completions` and `/models` are appended to the configured `baseUrl`,
+ * matching the OpenAI convention that many self-hosted and third-party servers
+ * copy. See {@link normalizeChatBaseUrl} for what counts as a base URL.
  */
 
 export type HackerCodeStreamEvent =
@@ -55,8 +56,9 @@ export class HackerCodeChatEndpointError extends Error {
 export async function streamChatCompletion(endpoint: IHackerCodeChatEndpoint, request: IHackerCodeChatRequest): Promise<IHackerCodeAssistantMessage> {
 	const abortController = new AbortController();
 	const cancelListener = request.token.onCancellationRequested(() => abortController.abort());
+	const url = endpointUrl(endpoint.baseUrl, '/chat/completions');
 	try {
-		const response = await fetch(joinUrl(endpoint.baseUrl, '/chat/completions'), {
+		const response = await fetch(url, {
 			method: 'POST',
 			headers: buildHeaders(endpoint, true),
 			body: JSON.stringify({
@@ -71,7 +73,7 @@ export async function streamChatCompletion(endpoint: IHackerCodeChatEndpoint, re
 		if (!response.ok) {
 			const body = await safeReadText(response);
 			throw new HackerCodeChatEndpointError(
-				`Provider request failed: ${response.status} ${response.statusText}${describeErrorBody(body)}`,
+				`POST ${url} failed: ${response.status} ${response.statusText}${describeErrorBody(body)}`,
 				response.status,
 				body
 			);
@@ -91,12 +93,14 @@ export async function streamChatCompletion(endpoint: IHackerCodeChatEndpoint, re
 }
 
 export async function listModels(endpoint: IHackerCodeChatEndpoint): Promise<string[]> {
-	const response = await fetch(joinUrl(endpoint.baseUrl, '/models'), { method: 'GET', headers: buildHeaders(endpoint, false) });
+	const url = endpointUrl(endpoint.baseUrl, '/models');
+	const response = await fetch(url, { method: 'GET', headers: buildHeaders(endpoint, false) });
 	if (!response.ok) {
+		const body = await safeReadText(response);
 		throw new HackerCodeChatEndpointError(
-			`Failed to list models: ${response.status} ${response.statusText}`,
+			`GET ${url} failed: ${response.status} ${response.statusText}${describeErrorBody(body)}`,
 			response.status,
-			await safeReadText(response)
+			body
 		);
 	}
 	const body: unknown = await response.json();
@@ -246,8 +250,8 @@ function buildHeaders(endpoint: IHackerCodeChatEndpoint, json: boolean): Record<
 	return headers;
 }
 
-function joinUrl(baseUrl: string, path: string): string {
-	return `${baseUrl.replace(/\/+$/u, '')}/${path.replace(/^\/+/u, '')}`;
+function endpointUrl(baseUrl: string, route: string): string {
+	return `${normalizeChatBaseUrl(baseUrl)}/${route.replace(/^\/+/u, '')}`;
 }
 
 async function safeReadText(response: Response): Promise<string> {
