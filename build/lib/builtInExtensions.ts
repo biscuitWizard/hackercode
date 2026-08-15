@@ -79,22 +79,26 @@ function isInsiders(): boolean {
 	return process.env['VSCODE_QUALITY'] === 'insider';
 }
 
+/**
+ * Built-in extensions come from the VSIX attached to the extension's GitHub release, never from
+ * the gallery in product.json. The two are unrelated: the gallery is where the shipped product
+ * looks for extensions at runtime, whereas these are pinned here by version and `sha256`, and a
+ * gallery that re-packages a VSIX serves different bytes for the same version and fails the
+ * checksum.
+ */
 function getExtensionDownloadStream(extension: IExtensionDefinition) {
 	let input: Stream;
 
 	if (extension.vsix) {
 		input = ext.fromVsix(path.join(root, extension.vsix), extension);
 	} else if (extension.platformSpecific) {
-		// A platform-specific extension publishes its VSIX assets on a GitHub release using a
-		// specific asset naming convention, so it is always downloaded from GitHub and never falls
-		// back to the Marketplace (which does not serve those assets) even when a gallery is configured.
+		// Published as one release asset per target, named by convention rather than resolved as
+		// "the .vsix on the release".
 		const asset = resolvePlatformSpecificAsset(extension);
 		if (!asset) {
 			return es.readArray([]);
 		}
 		input = ext.fromGithub(extension, { asset, latest: isInsiders() });
-	} else if (productjson.extensionsGallery?.serviceUrl) {
-		input = ext.fromMarketplace(productjson.extensionsGallery.serviceUrl, extension);
 	} else {
 		input = ext.fromGithub(extension, { latest: isInsiders() });
 	}
@@ -133,8 +137,7 @@ export function getExtensionStream(extension: IExtensionDefinition) {
 }
 
 function syncMarketplaceExtension(extension: IExtensionDefinition): Stream {
-	const galleryServiceUrl = productjson.extensionsGallery?.serviceUrl;
-	const source = ansiColors.blue(galleryServiceUrl ? '[marketplace]' : '[github]');
+	const source = ansiColors.blue('[github]');
 	if (isUpToDate(extension)) {
 		log(source, `${extension.name}@${extension.version}`, ansiColors.green('✔︎'));
 		return es.readArray([]);

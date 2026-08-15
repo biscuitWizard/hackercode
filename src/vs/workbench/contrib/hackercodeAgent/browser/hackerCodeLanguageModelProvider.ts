@@ -31,6 +31,7 @@ import {
 } from '../../chat/common/languageModels.js';
 import { HACKERCODE_AGENT_PROVIDERS_CONFIG_KEY } from '../common/hackerCodeAgentConfiguration.js';
 import { HACKERCODE_AGENT_VENDOR } from '../common/hackerCodeAgentVendor.js';
+import { getInvalidToolArguments, parseToolCallArguments } from '../common/hackerCodeToolArguments.js';
 import { IResolvedHackerCodeAgentProvider, resolveHackerCodeAgentProviders } from './hackerCodeAgentProviders.js';
 
 /**
@@ -188,7 +189,7 @@ export class HackerCodeLanguageModelProvider extends Disposable implements ILang
 						type: 'tool_use',
 						name: toolCall.function.name,
 						toolCallId: toolCall.id,
-						parameters: parseToolArguments(toolCall.function.arguments)
+						parameters: parseToolCallArguments(toolCall.function.arguments)
 					});
 				}
 				result.complete(undefined);
@@ -250,7 +251,7 @@ function toWireMessages(messages: readonly IChatMessage[]): HackerCodeWireMessag
 					toolCalls.push({
 						id: part.toolCallId,
 						type: 'function',
-						function: { name: part.name, arguments: JSON.stringify(part.parameters ?? {}) }
+						function: { name: part.name, arguments: toWireArguments(part.parameters) }
 					});
 					break;
 				case 'tool_result':
@@ -289,6 +290,15 @@ function toWireMessages(messages: readonly IChatMessage[]): HackerCodeWireMessag
 	return result;
 }
 
+/**
+ * Arguments that failed to parse go back to the provider as the model wrote
+ * them, so the replayed turn is what actually happened and the marker object
+ * stays an internal detail rather than something the model has to interpret.
+ */
+function toWireArguments(parameters: object | undefined): string {
+	return getInvalidToolArguments(parameters)?.raw ?? JSON.stringify(parameters ?? {});
+}
+
 function toWireTools(tools: unknown): IHackerCodeWireTool[] | undefined {
 	if (!Array.isArray(tools) || tools.length === 0) {
 		return undefined;
@@ -301,17 +311,6 @@ function toWireTools(tools: unknown): IHackerCodeWireTool[] | undefined {
 			parameters: tool.parametersSchema ?? { type: 'object', properties: {} }
 		}
 	}));
-}
-
-function parseToolArguments(rawArguments: string): object {
-	if (!rawArguments || rawArguments.trim().length === 0) {
-		return {};
-	}
-	try {
-		return JSON.parse(rawArguments);
-	} catch {
-		throw new Error('Tool call arguments were not valid JSON');
-	}
 }
 
 function messageToText(message: IChatMessage): string {

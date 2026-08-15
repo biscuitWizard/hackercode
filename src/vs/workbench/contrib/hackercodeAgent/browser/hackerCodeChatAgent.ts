@@ -30,6 +30,7 @@ import { CountTokensCallback, ILanguageModelToolsService, IToolData, IToolResult
 import { isMutatingHackerCodeTool } from './hackerCodeAgentTools.js';
 import { isMutatingExtensionTool } from './hackerCodeExtensionTools.js';
 import { buildHackerCodeSystemPrompt } from './hackerCodeAgentPrompt.js';
+import { describeInvalidToolArguments, getInvalidToolArguments } from '../common/hackerCodeToolArguments.js';
 
 /**
  * Tools that change the machine rather than describe it, and so are only ever
@@ -187,9 +188,11 @@ export class HackerCodeChatAgent extends Disposable implements IChatAgentImpleme
 	}
 
 	/**
-	 * Executes one tool call. Every failure — an unknown tool, one the mode
-	 * forbids, or an error thrown by the tool — is turned into a tool result
-	 * the model can read and react to, rather than aborting the turn.
+	 * Executes one tool call. Every failure — arguments that were not valid
+	 * JSON, an unknown tool, one the mode forbids, or an error thrown by the
+	 * tool — is turned into a tool result the model can read and react to,
+	 * rather than aborting the turn. Nothing the model can get wrong should
+	 * ever reach the user as a failed request.
 	 */
 	private async _invokeTool(
 		request: IChatAgentRequest,
@@ -209,6 +212,15 @@ export class HackerCodeChatAgent extends Disposable implements IChatAgentImpleme
 			// The model asked for something outside the set it was offered, which
 			// in Ask mode is the difference between reading and mutating.
 			return toolResultPart(`The tool "${use.name}" is not available in this mode.`, true);
+		}
+
+		const invalidArguments = getInvalidToolArguments(use.parameters);
+		if (invalidArguments) {
+			// The tool is deliberately not run: the marker object is not the
+			// arguments the model meant, and guessing at them is how a typo
+			// turns into an edit nobody asked for.
+			this.logService.warn(`[HackerCode] Malformed arguments for tool "${use.name}": ${invalidArguments.reason}`);
+			return toolResultPart(describeInvalidToolArguments(use.name, invalidArguments), true);
 		}
 
 		try {

@@ -189,11 +189,11 @@ function applyToolCallDelta(state: IAssemblyState, toolCallDelta: any, onEvent: 
 		accumulated.id = toolCallDelta.id;
 	}
 	const name = toolCallDelta.function?.name;
-	const argumentsDelta = toolCallDelta.function?.arguments;
+	const argumentsDelta = toArgumentsText(toolCallDelta.function?.arguments);
 	if (typeof name === 'string') {
 		accumulated.function.name += name;
 	}
-	if (typeof argumentsDelta === 'string') {
+	if (argumentsDelta !== undefined) {
 		accumulated.function.arguments += argumentsDelta;
 	}
 	onEvent?.({
@@ -201,16 +201,40 @@ function applyToolCallDelta(state: IAssemblyState, toolCallDelta: any, onEvent: 
 		index,
 		...(typeof toolCallDelta.id === 'string' ? { id: toolCallDelta.id } : {}),
 		...(typeof name === 'string' ? { name } : {}),
-		...(typeof argumentsDelta === 'string' ? { argumentsDelta } : {})
+		...(argumentsDelta !== undefined ? { argumentsDelta } : {})
 	});
+}
+
+/**
+ * `arguments` is a string of JSON in the OpenAI protocol, but providers do send
+ * the object itself. Both are accepted so that the difference never reaches the
+ * caller as a parse failure.
+ */
+function toArgumentsText(value: unknown): string | undefined {
+	if (typeof value === 'string') {
+		return value;
+	}
+	if (value !== null && typeof value === 'object') {
+		return JSON.stringify(value);
+	}
+	return undefined;
 }
 
 function finalizeAssembly(state: IAssemblyState): IHackerCodeAssistantMessage {
 	const toolCalls = [...state.toolCalls.entries()]
 		.sort(([a], [b]) => a - b)
-		.map(([, value]) => value)
+		.map(([index, value]) => ({ ...value, id: value.id || syntheticToolCallId(index) }))
 		.filter(toolCall => toolCall.function.name.length > 0);
 	return { content: state.content, toolCalls, finishReason: state.finishReason };
+}
+
+/**
+ * The id correlates a tool result back to its call. A provider that omits it
+ * would otherwise leave an empty one on the follow-up request, which strict
+ * endpoints reject, so the position in the response stands in for it.
+ */
+function syntheticToolCallId(index: number): string {
+	return `call_${index}`;
 }
 
 function assembleFromNonStreamingJson(body: string, onEvent: ((event: HackerCodeStreamEvent) => void) | undefined): IHackerCodeAssistantMessage {
@@ -226,12 +250,12 @@ function assembleFromNonStreamingJson(body: string, onEvent: ((event: HackerCode
 		onEvent?.({ type: 'content', delta: content });
 	}
 	const toolCalls: IHackerCodeWireToolCall[] = Array.isArray(message.tool_calls)
-		? message.tool_calls.map((toolCall: any) => ({
-			id: typeof toolCall.id === 'string' ? toolCall.id : '',
+		? message.tool_calls.map((toolCall: any, index: number) => ({
+			id: typeof toolCall.id === 'string' && toolCall.id ? toolCall.id : syntheticToolCallId(index),
 			type: 'function' as const,
 			function: {
 				name: toolCall.function?.name ?? '',
-				arguments: toolCall.function?.arguments ?? ''
+				arguments: toArgumentsText(toolCall.function?.arguments) ?? ''
 			}
 		}))
 		: [];

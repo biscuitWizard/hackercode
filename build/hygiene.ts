@@ -77,8 +77,10 @@ export function hygiene(some: NodeJS.ReadWriteStream | string[] | undefined, run
 	const productJson = es.through(function (file: VinylFile) {
 		const product = JSON.parse(file.contents!.toString('utf8'));
 
-		if (product.extensionsGallery) {
-			console.error(`product.json: Contains 'extensionsGallery'`);
+		// A gallery is expected here: HackerCode ships with Open VSX. What must never be committed
+		// is Microsoft's, which this build has no licence to use.
+		if (/marketplace\.visualstudio\.com/i.test(JSON.stringify(product.extensionsGallery ?? ''))) {
+			console.error(`product.json: 'extensionsGallery' points at the Visual Studio Marketplace`);
 			errorCount++;
 		}
 
