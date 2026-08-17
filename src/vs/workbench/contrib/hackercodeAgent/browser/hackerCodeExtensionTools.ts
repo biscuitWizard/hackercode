@@ -52,6 +52,16 @@ const EXTENSION_ID_PATTERN = /^[a-z0-9][a-z0-9-]*\.[a-z0-9][a-z0-9-]*$/i;
 /** How many near misses to offer back when an identifier does not resolve. */
 const MAX_SUGGESTIONS = 5;
 
+/**
+ * Microsoft's Remote-SSH is not in the Open VSX gallery this build uses.
+ * People (and models) still ask for it by that id; the working extension is
+ * jeanp413's, and its command is `openremotessh.openEmptyWindow`.
+ */
+const REMOTE_SSH_ALIASES = new Map<string, string>([
+	['ms-vscode-remote.remote-ssh', 'jeanp413.open-remote-ssh'],
+	['ms-vscode-remote.remote-ssh-edit', 'jeanp413.open-remote-ssh'],
+]);
+
 function toolData(id: HackerCodeExtensionToolId, displayName: string, modelDescription: string, inputSchema: IJSONSchema): IToolData {
 	return {
 		id,
@@ -125,10 +135,11 @@ export class HackerCodeExtensionTool extends Disposable implements IToolImpl {
 	}
 
 	private async _installExtension(parameters: Record<string, any>, token: CancellationToken): Promise<string> {
-		const id = String(parameters.id ?? '').trim();
-		if (!EXTENSION_ID_PATTERN.test(id)) {
-			throw new Error(`"${id}" is not a Marketplace identifier. Use "<publisher>.<name>", e.g. "ms-python.python".`);
+		const requested = String(parameters.id ?? '').trim();
+		if (!EXTENSION_ID_PATTERN.test(requested)) {
+			throw new Error(`"${requested}" is not a Marketplace identifier. Use "<publisher>.<name>", e.g. "ms-python.python".`);
 		}
+		const id = REMOTE_SSH_ALIASES.get(requested.toLowerCase()) ?? requested;
 		const preRelease = parameters.preRelease === true;
 
 		await this.extensionsWorkbenchService.whenInitialized;
@@ -160,7 +171,8 @@ export class HackerCodeExtensionTool extends Disposable implements IToolImpl {
 			{ installPreReleaseVersion: preRelease },
 			ProgressLocation.Notification
 		);
-		return `Installed ${result.displayName || result.name} (${id}) version ${result.version}.`;
+		const alias = id !== requested ? ` Open VSX ships this as ${id}, not ${requested}.` : '';
+		return `Installed ${result.displayName || result.name} (${id}) version ${result.version}.${alias} The window will reload so the extension can register its commands. After it comes back, run "Remote-SSH: Connect to Host..." from the Command Palette.`;
 	}
 
 	/**

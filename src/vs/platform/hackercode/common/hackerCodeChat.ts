@@ -32,6 +32,52 @@ export interface IHackerCodeChatEndpoint {
  */
 const ROUTE_SUFFIXES = ['/chat/completions', '/completions', '/models'];
 
+/**
+ * Pulls the visible reply out of a `content` field. OpenAI sends a string;
+ * some compatible servers (and the Responses-shaped deltas OpenRouter uses
+ * for Claude) send an array of parts, or null when the model is only calling
+ * tools. All three have to become the same string or the user sees a turn
+ * that ran tools and then said nothing.
+ */
+export function extractTextContent(value: unknown): string {
+	if (typeof value === 'string') {
+		return value;
+	}
+	if (!Array.isArray(value)) {
+		return '';
+	}
+	const parts: string[] = [];
+	for (const part of value) {
+		if (typeof part === 'string') {
+			parts.push(part);
+			continue;
+		}
+		if (!part || typeof part !== 'object') {
+			continue;
+		}
+		const record = part as { type?: unknown; text?: unknown };
+		if ((record.type === 'text' || record.type === 'output_text') && typeof record.text === 'string') {
+			parts.push(record.text);
+		}
+	}
+	return parts.join('');
+}
+
+/**
+ * Reasoning tokens. Claude via OpenRouter puts the entire narration here and
+ * leaves `content` empty whenever it is about to call a tool. Dropping it is
+ * how a 19-step turn ends with "Finished with 19 steps" and no reply.
+ */
+export function extractReasoning(value: unknown): string {
+	if (!value || typeof value !== 'object') {
+		return '';
+	}
+	const record = value as { reasoning?: unknown; reasoning_content?: unknown; thinking?: unknown };
+	return extractTextContent(record.reasoning)
+		|| extractTextContent(record.reasoning_content)
+		|| extractTextContent(record.thinking);
+}
+
 export function normalizeChatBaseUrl(baseUrl: string): string {
 	let root = baseUrl.trim().replace(/\/+$/u, '');
 	const lower = root.toLowerCase();
@@ -50,8 +96,19 @@ export interface IHackerCodeWireToolCall {
 	readonly function: { name: string; arguments: string };
 }
 
+/**
+ * A user turn is plain text until it carries an image, at which point the
+ * OpenAI shape requires the parts to be spelled out. Images travel as data
+ * URLs because that is the one form every compatible endpoint accepts without
+ * somewhere to host the file.
+ */
+export type HackerCodeWireContentPart =
+	| { readonly type: 'text'; readonly text: string }
+	| { readonly type: 'image_url'; readonly image_url: { readonly url: string } };
+
 export type HackerCodeWireMessage =
-	| { readonly role: 'system' | 'user'; readonly content: string }
+	| { readonly role: 'system'; readonly content: string }
+	| { readonly role: 'user'; readonly content: string | readonly HackerCodeWireContentPart[] }
 	| { readonly role: 'assistant'; readonly content: string; readonly tool_calls?: readonly IHackerCodeWireToolCall[] }
 	| { readonly role: 'tool'; readonly tool_call_id: string; readonly content: string };
 
@@ -67,6 +124,8 @@ export interface IHackerCodeWireTool {
 /** The fully assembled model turn, once its stream has ended. */
 export interface IHackerCodeAssistantMessage {
 	readonly content: string;
+	/** Reasoning tokens some providers (OpenRouter + Claude) send instead of `content`. */
+	readonly thinking: string;
 	readonly toolCalls: readonly IHackerCodeWireToolCall[];
 	readonly finishReason: string | null;
 }
@@ -96,6 +155,12 @@ export interface IHackerCodeChatRelayService {
 	 * calling {@link startChatCompletion} with the same `requestId`.
 	 */
 	onDynamicDidStreamChatText(requestId: string): Event<string>;
+
+	/**
+	 * Reasoning deltas of one in-flight request. Same subscribe-before-start
+	 * rule as {@link onDynamicDidStreamChatText}.
+	 */
+	onDynamicDidStreamChatThinking(requestId: string): Event<string>;
 
 	/**
 	 * Streams one chat completion turn, resolving with the assembled message.

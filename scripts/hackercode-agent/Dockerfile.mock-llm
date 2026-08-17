@@ -1,0 +1,5 @@
+FROM node:22-alpine
+WORKDIR /app
+COPY mock-llm-server.mjs /app/mock-llm-server.mjs
+EXPOSE 8740
+CMD ["node", "/app/mock-llm-server.mjs"]

@@ -6,8 +6,6 @@
 import { getErrorMessage } from '../../../../base/common/errors.js';
 import { IJSONSchema } from '../../../../base/common/jsonSchema.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
-import { ResourceMap } from '../../../../base/common/map.js';
-import { isAbsolute } from '../../../../base/common/path.js';
 import { URI } from '../../../../base/common/uri.js';
 import { CancellationToken } from '../../../../base/common/cancellation.js';
 import { localize } from '../../../../nls.js';
@@ -27,6 +25,7 @@ import {
 	ToolDataSource,
 	ToolProgress
 } from '../../chat/common/tools/languageModelToolsService.js';
+import { resolveExistingWorkspacePath, toWorkspaceRelativePath } from './hackerCodeWorkspacePaths.js';
 
 /**
  * The workspace reading tools an agent loop cannot work without: read a file,
@@ -163,7 +162,7 @@ export class HackerCodeCoreTool extends Disposable implements IToolImpl {
 	}
 
 	private async _readFile(parameters: Record<string, any>): Promise<string> {
-		const resource = this._resolve(String(parameters.path ?? ''));
+		const resource = await this._resolveExisting(String(parameters.path ?? ''));
 		const content = (await this.fileService.readFile(resource)).value.toString();
 		const startLine = asPositiveInteger(parameters.startLine);
 		const endLine = asPositiveInteger(parameters.endLine);
@@ -180,7 +179,7 @@ export class HackerCodeCoreTool extends Disposable implements IToolImpl {
 	}
 
 	private async _listDirectory(parameters: Record<string, any>): Promise<string> {
-		const resource = this._resolve(typeof parameters.path === 'string' ? parameters.path : '');
+		const resource = await this._resolveExisting(typeof parameters.path === 'string' ? parameters.path : '');
 		const stat = await this.fileService.resolve(resource);
 		if (!stat.isDirectory) {
 			throw new Error(`${resource.fsPath} is not a directory.`);
@@ -252,43 +251,12 @@ export class HackerCodeCoreTool extends Disposable implements IToolImpl {
 		return `${paths.join('\n')}${complete.limitHit ? '\n...[more files were not returned]' : ''}`;
 	}
 
-	/**
-	 * Resolves a model-supplied path. Absolute paths are honoured so the model
-	 * can follow one it saw in a search result; everything else is joined onto
-	 * the workspace folder it names, or the first folder.
-	 */
-	private _resolve(path: string): URI {
-		const folders = this.workspaceContextService.getWorkspace().folders;
-		if (isAbsolute(path) && folders.length > 0) {
-			return folders[0].uri.with({ path });
-		}
-		if (folders.length === 0) {
-			throw new Error('No folder is open, so a workspace-relative path cannot be resolved.');
-		}
-		const normalized = path.replace(/^\.\/+/, '').replace(/^\/+/, '');
-		if (!normalized) {
-			return folders[0].uri;
-		}
-		const named = folders.find(folder => normalized === folder.name || normalized.startsWith(`${folder.name}/`));
-		if (named && folders.length > 1) {
-			const rest = normalized.slice(named.name.length).replace(/^\/+/, '');
-			return rest ? named.uri.with({ path: `${named.uri.path}/${rest}` }) : named.uri;
-		}
-		return folders[0].uri.with({ path: `${folders[0].uri.path}/${normalized}` });
+	private _resolveExisting(path: string): Promise<URI> {
+		return resolveExistingWorkspacePath(this.fileService, this.workspaceContextService, path);
 	}
 
 	private _relative(resource: URI): string {
-		const folders = this.workspaceContextService.getWorkspace().folders;
-		const map = new ResourceMap<string>();
-		for (const folder of folders) {
-			map.set(folder.uri, folder.name);
-		}
-		const folder = this.workspaceContextService.getWorkspaceFolder(resource);
-		if (!folder) {
-			return resource.fsPath;
-		}
-		const relative = resource.path.slice(folder.uri.path.length).replace(/^\/+/, '');
-		return folders.length > 1 ? `${folder.name}/${relative}` : relative;
+		return toWorkspaceRelativePath(this.workspaceContextService, resource);
 	}
 }
 

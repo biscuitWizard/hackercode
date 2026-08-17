@@ -11,6 +11,8 @@ import {
 	IHackerCodeChatEndpoint,
 	IHackerCodeWireTool,
 	IHackerCodeWireToolCall,
+	extractReasoning,
+	extractTextContent,
 	normalizeChatBaseUrl
 } from '../common/hackerCodeChat.js';
 
@@ -31,6 +33,7 @@ import {
 
 export type HackerCodeStreamEvent =
 	| { readonly type: 'content'; readonly delta: string }
+	| { readonly type: 'thinking'; readonly delta: string }
 	| { readonly type: 'tool_call_delta'; readonly index: number; readonly id?: string; readonly name?: string; readonly argumentsDelta?: string };
 
 export interface IHackerCodeChatRequest {
@@ -58,7 +61,7 @@ export async function streamChatCompletion(endpoint: IHackerCodeChatEndpoint, re
 	const cancelListener = request.token.onCancellationRequested(() => abortController.abort());
 	const url = endpointUrl(endpoint.baseUrl, '/chat/completions');
 	try {
-		const response = await fetch(url, {
+		const response = await fetchOrExplain(url, {
 			method: 'POST',
 			headers: buildHeaders(endpoint, true),
 			body: JSON.stringify({
@@ -94,7 +97,7 @@ export async function streamChatCompletion(endpoint: IHackerCodeChatEndpoint, re
 
 export async function listModels(endpoint: IHackerCodeChatEndpoint): Promise<string[]> {
 	const url = endpointUrl(endpoint.baseUrl, '/models');
-	const response = await fetch(url, { method: 'GET', headers: buildHeaders(endpoint, false) });
+	const response = await fetchOrExplain(url, { method: 'GET', headers: buildHeaders(endpoint, false) });
 	if (!response.ok) {
 		const body = await safeReadText(response);
 		throw new HackerCodeChatEndpointError(
@@ -119,12 +122,13 @@ export async function listModels(endpoint: IHackerCodeChatEndpoint): Promise<str
 
 interface IAssemblyState {
 	content: string;
+	thinking: string;
 	readonly toolCalls: Map<number, { id: string; type: 'function'; function: { name: string; arguments: string } }>;
 	finishReason: string | null;
 }
 
 async function consumeStream(body: ReadableStream<Uint8Array>, onEvent: ((event: HackerCodeStreamEvent) => void) | undefined): Promise<IHackerCodeAssistantMessage> {
-	const state: IAssemblyState = { content: '', toolCalls: new Map(), finishReason: null };
+	const state: IAssemblyState = { content: '', thinking: '', toolCalls: new Map(), finishReason: null };
 	const parser = new SSEParser(event => handleSSEEvent(event.data, state, onEvent));
 
 	const reader = body.getReader();
@@ -167,9 +171,15 @@ function handleSSEEvent(data: string, state: IAssemblyState, onEvent: ((event: H
 		state.finishReason = choice.finish_reason;
 	}
 	const delta = choice.delta ?? {};
-	if (typeof delta.content === 'string' && delta.content.length > 0) {
-		state.content += delta.content;
-		onEvent?.({ type: 'content', delta: delta.content });
+	const content = extractTextContent(delta.content);
+	if (content) {
+		state.content += content;
+		onEvent?.({ type: 'content', delta: content });
+	}
+	const thinking = extractReasoning(delta);
+	if (thinking) {
+		state.thinking += thinking;
+		onEvent?.({ type: 'thinking', delta: thinking });
 	}
 	if (Array.isArray(delta.tool_calls)) {
 		for (const toolCallDelta of delta.tool_calls) {
@@ -225,7 +235,7 @@ function finalizeAssembly(state: IAssemblyState): IHackerCodeAssistantMessage {
 		.sort(([a], [b]) => a - b)
 		.map(([index, value]) => ({ ...value, id: value.id || syntheticToolCallId(index) }))
 		.filter(toolCall => toolCall.function.name.length > 0);
-	return { content: state.content, toolCalls, finishReason: state.finishReason };
+	return { content: state.content, thinking: state.thinking, toolCalls, finishReason: state.finishReason };
 }
 
 /**
@@ -245,9 +255,13 @@ function assembleFromNonStreamingJson(body: string, onEvent: ((event: HackerCode
 		throw new HackerCodeChatEndpointError('Non-streaming provider response was not valid JSON', undefined, body);
 	}
 	const message = parsed?.choices?.[0]?.message ?? {};
-	const content = typeof message.content === 'string' ? message.content : '';
+	const content = extractTextContent(message.content);
 	if (content) {
 		onEvent?.({ type: 'content', delta: content });
+	}
+	const thinking = extractReasoning(message);
+	if (thinking) {
+		onEvent?.({ type: 'thinking', delta: thinking });
 	}
 	const toolCalls: IHackerCodeWireToolCall[] = Array.isArray(message.tool_calls)
 		? message.tool_calls.map((toolCall: any, index: number) => ({
@@ -260,7 +274,7 @@ function assembleFromNonStreamingJson(body: string, onEvent: ((event: HackerCode
 		}))
 		: [];
 	const finishReason = typeof parsed?.choices?.[0]?.finish_reason === 'string' ? parsed.choices[0].finish_reason : null;
-	return { content, toolCalls, finishReason };
+	return { content, thinking, toolCalls, finishReason };
 }
 
 function buildHeaders(endpoint: IHackerCodeChatEndpoint, json: boolean): Record<string, string> {
@@ -284,6 +298,46 @@ async function safeReadText(response: Response): Promise<string> {
 	} catch {
 		return '';
 	}
+}
+
+/**
+ * Fetches, and says what was being reached when it could not be.
+ *
+ * A request that never gets a reply fails as "fetch failed", which names
+ * neither the address nor the reason. What a user needs to know is that
+ * nothing is listening at the URL they configured, and what that URL was —
+ * that is the difference between a bug report and a typo they can fix.
+ */
+async function fetchOrExplain(url: string, init: RequestInit): Promise<Response> {
+	try {
+		return await fetch(url, init);
+	} catch (error) {
+		if (isAbortError(error)) {
+			throw error;
+		}
+		throw new HackerCodeChatEndpointError(`Could not reach ${url}: ${describeNetworkFailure(error)}. Check the provider's base URL in Settings, and that the service is running.`);
+	}
+}
+
+function isAbortError(error: unknown): boolean {
+	return error instanceof Error && error.name === 'AbortError';
+}
+
+/** The cause carries the useful part; the message is usually "fetch failed". */
+function describeNetworkFailure(error: unknown): string {
+	const cause = (error as { cause?: unknown })?.cause;
+	const code = (cause as { code?: string })?.code;
+	switch (code) {
+		case 'ECONNREFUSED': return 'nothing is listening there';
+		case 'ENOTFOUND': return 'the host name does not resolve';
+		case 'ETIMEDOUT': return 'the connection timed out';
+		case 'ECONNRESET': return 'the connection was reset';
+		case 'CERT_HAS_EXPIRED': return 'its TLS certificate has expired';
+		case 'DEPTH_ZERO_SELF_SIGNED_CERT': return 'its TLS certificate is self-signed';
+		default: break;
+	}
+	const detail = cause instanceof Error ? cause.message : error instanceof Error ? error.message : String(error);
+	return detail || 'the connection failed';
 }
 
 /**

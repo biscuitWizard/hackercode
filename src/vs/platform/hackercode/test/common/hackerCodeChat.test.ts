@@ -5,7 +5,7 @@
 
 import assert from 'assert';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../base/test/common/utils.js';
-import { normalizeChatBaseUrl } from '../../common/hackerCodeChat.js';
+import { extractReasoning, extractTextContent, normalizeChatBaseUrl } from '../../common/hackerCodeChat.js';
 
 suite('normalizeChatBaseUrl', () => {
 
@@ -33,5 +33,28 @@ suite('normalizeChatBaseUrl', () => {
 
 	test('only strips one route, so a path that merely contains one survives', () => {
 		assert.strictEqual(normalizeChatBaseUrl('https://proxy.example/chat/completions/v1'), 'https://proxy.example/chat/completions/v1');
+	});
+});
+
+suite('extractTextContent / extractReasoning', () => {
+
+	ensureNoDisposablesAreLeakedInTestSuite();
+
+	test('accepts a plain string and treats null as empty', () => {
+		assert.strictEqual(extractTextContent('hello'), 'hello');
+		assert.strictEqual(extractTextContent(null), '');
+		assert.strictEqual(extractTextContent(undefined), '');
+	});
+
+	test('joins the text parts a Responses-shaped delta sends', () => {
+		assert.strictEqual(extractTextContent([{ type: 'text', text: 'hel' }, { type: 'text', text: 'lo' }]), 'hello');
+		assert.strictEqual(extractTextContent([{ type: 'output_text', text: 'hi' }]), 'hi');
+	});
+
+	test('reads the reasoning fields Claude-via-OpenRouter actually uses', () => {
+		assert.strictEqual(extractReasoning({ reasoning: 'thinking out loud' }), 'thinking out loud');
+		assert.strictEqual(extractReasoning({ reasoning_content: 'also this' }), 'also this');
+		assert.strictEqual(extractReasoning({ thinking: [{ type: 'text', text: 'parts' }] }), 'parts');
+		assert.strictEqual(extractReasoning({ content: 'not reasoning' }), '');
 	});
 });

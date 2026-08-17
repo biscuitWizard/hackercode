@@ -17,6 +17,7 @@ import { listModels, streamChatCompletion } from '../node/hackerCodeChatCompleti
 
 interface IInFlightRequest {
 	readonly text: Emitter<string>;
+	readonly thinking: Emitter<string>;
 	readonly cancellation: CancellationTokenSource;
 }
 
@@ -44,6 +45,10 @@ export class HackerCodeChatRelayService extends Disposable implements IHackerCod
 		return this._request(requestId).text.event;
 	}
 
+	onDynamicDidStreamChatThinking(requestId: string): Event<string> {
+		return this._request(requestId).thinking.event;
+	}
+
 	async startChatCompletion(request: IHackerCodeChatCompletionRequest): Promise<IHackerCodeAssistantMessage> {
 		const inFlight = this._request(request.requestId);
 		try {
@@ -55,6 +60,8 @@ export class HackerCodeChatRelayService extends Disposable implements IHackerCod
 				onEvent: event => {
 					if (event.type === 'content') {
 						inFlight.text.fire(event.delta);
+					} else if (event.type === 'thinking') {
+						inFlight.thinking.fire(event.delta);
 					}
 				}
 			});
@@ -82,7 +89,7 @@ export class HackerCodeChatRelayService extends Disposable implements IHackerCod
 	private _request(requestId: string): IInFlightRequest {
 		let request = this._requests.get(requestId);
 		if (!request) {
-			request = { text: new Emitter<string>(), cancellation: new CancellationTokenSource() };
+			request = { text: new Emitter<string>(), thinking: new Emitter<string>(), cancellation: new CancellationTokenSource() };
 			this._requests.set(requestId, request);
 		}
 		return request;
@@ -95,6 +102,7 @@ export class HackerCodeChatRelayService extends Disposable implements IHackerCod
 		}
 		this._requests.delete(requestId);
 		request.text.dispose();
+		request.thinking.dispose();
 		request.cancellation.dispose();
 	}
 

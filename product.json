@@ -45,6 +45,39 @@
 	"linkProtectionTrustedDomains": [
 		"https://open-vsx.org"
 	],
+	"remoteExtensionTips": {
+		"ssh-remote": {
+			"friendlyName": "Remote - SSH",
+			"extensionId": "jeanp413.open-remote-ssh",
+			"startEntry": {
+				"helpLink": "https://github.com/jeanp413/open-remote-ssh",
+				"startConnectLabel": "Connect to Host...",
+				"startCommand": "openremotessh.openEmptyWindow",
+				"priority": 10
+			}
+		}
+	},
+	"extensionEnabledApiProposals": {
+		"jeanp413.open-remote-ssh": [
+			"resolvers",
+			"tunnels",
+			"terminalDataWriteEvent",
+			"contribRemoteHelp",
+			"contribViewsRemote"
+		],
+		"jeanp413.open-remote-wsl": [
+			"resolvers",
+			"contribRemoteHelp",
+			"contribViewsRemote"
+		],
+		"ms-vscode.remote-server": [
+			"resolvers",
+			"tunnels",
+			"terminalDataWriteEvent",
+			"contribRemoteHelp",
+			"contribViewsRemote"
+		]
+	},
 	"builtInExtensions": [
 		{
 			"name": "ms-vscode.js-debug-companion",

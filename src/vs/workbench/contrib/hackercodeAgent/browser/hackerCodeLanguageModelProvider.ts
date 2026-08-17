@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AsyncIterableObject, DeferredPromise } from '../../../../base/common/async.js';
+import { encodeBase64, VSBuffer } from '../../../../base/common/buffer.js';
 import { CancellationToken } from '../../../../base/common/cancellation.js';
 import { Emitter } from '../../../../base/common/event.js';
 import { Disposable, DisposableStore } from '../../../../base/common/lifecycle.js';
@@ -11,6 +12,7 @@ import { generateUuid } from '../../../../base/common/uuid.js';
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
 import { ExtensionIdentifier } from '../../../../platform/extensions/common/extensions.js';
 import {
+	HackerCodeWireContentPart,
 	HackerCodeWireMessage,
 	IHackerCodeChatEndpoint,
 	IHackerCodeChatRelayService,
@@ -115,7 +117,13 @@ export class HackerCodeLanguageModelProvider extends Disposable implements ILang
 						// All models share one vendor, so bucket them in the picker by the
 						// provider they came from. Presentation only; routing stays by vendor.
 						modelGroup: { id: provider.id },
-						capabilities: { toolCalling: true, agentMode: true }
+						// Vision is advertised rather than detected: an
+						// OpenAI-compatible endpoint says nothing about which
+						// of its models take images, and the alternative is
+						// greying out image attachments for everyone. A model
+						// that cannot take one answers with an error, which is
+						// a better outcome than a button that is never enabled.
+						capabilities: { toolCalling: true, agentMode: true, vision: true }
 					}
 				});
 			}
@@ -175,6 +183,7 @@ export class HackerCodeLanguageModelProvider extends Disposable implements ILang
 			// Subscribe before starting, so no delta is missed: the channel delivers
 			// the subscription before the request that produces the deltas.
 			listeners.add(this.relayService.onDynamicDidStreamChatText(requestId)(delta => emitter.emitOne({ type: 'text', value: delta })));
+			listeners.add(this.relayService.onDynamicDidStreamChatThinking(requestId)(delta => emitter.emitOne({ type: 'thinking', value: delta })));
 			listeners.add(token.onCancellationRequested(() => this.relayService.cancelChatCompletion(requestId)));
 			try {
 				const message = await this.relayService.startChatCompletion({
@@ -184,6 +193,11 @@ export class HackerCodeLanguageModelProvider extends Disposable implements ILang
 					messages: wireMessages,
 					tools
 				});
+				// A model that only reasoned and never wrote `content` still
+				// owes the user a reply when it is not calling a tool.
+				if (!message.content.trim() && message.thinking.trim() && message.toolCalls.length === 0) {
+					emitter.emitOne({ type: 'text', value: message.thinking });
+				}
 				for (const toolCall of message.toolCalls) {
 					emitter.emitOne({
 						type: 'tool_use',
@@ -239,6 +253,7 @@ function toWireMessages(messages: readonly IChatMessage[]): HackerCodeWireMessag
 
 	for (const message of messages) {
 		const text: string[] = [];
+		const images: HackerCodeWireContentPart[] = [];
 		const toolCalls: IHackerCodeWireToolCall[] = [];
 		const toolResults: HackerCodeWireMessage[] = [];
 
@@ -246,6 +261,9 @@ function toWireMessages(messages: readonly IChatMessage[]): HackerCodeWireMessag
 			switch (part.type) {
 				case 'text':
 					text.push(part.value);
+					break;
+				case 'image_url':
+					images.push({ type: 'image_url', image_url: { url: toDataUrl(part.value.mimeType, part.value.data) } });
 					break;
 				case 'tool_use':
 					toolCalls.push({
@@ -261,7 +279,7 @@ function toWireMessages(messages: readonly IChatMessage[]): HackerCodeWireMessag
 						content: part.value.map(value => value.type === 'text' ? value.value : '').join('')
 					});
 					break;
-				// Images, binary data and encrypted thinking have no representation in
+				// Binary data and encrypted thinking have no representation in
 				// the plain OpenAI chat-completions shape and are dropped.
 			}
 		}
@@ -278,7 +296,12 @@ function toWireMessages(messages: readonly IChatMessage[]): HackerCodeWireMessag
 				});
 				break;
 			case ChatMessageRole.User:
-				if (text.length > 0 || toolResults.length === 0) {
+				// An image forces the parts to be spelled out; without one the
+				// plain string form is kept, since a few endpoints only accept
+				// that.
+				if (images.length > 0) {
+					result.push({ role: 'user', content: [...(text.length > 0 ? [{ type: 'text', text: text.join('') } as const] : []), ...images] });
+				} else if (text.length > 0 || toolResults.length === 0) {
 					result.push({ role: 'user', content: text.join('') });
 				}
 				break;
@@ -288,6 +311,10 @@ function toWireMessages(messages: readonly IChatMessage[]): HackerCodeWireMessag
 	}
 
 	return result;
+}
+
+function toDataUrl(mimeType: string, data: VSBuffer): string {
+	return `data:${mimeType};base64,${encodeBase64(data)}`;
 }
 
 /**

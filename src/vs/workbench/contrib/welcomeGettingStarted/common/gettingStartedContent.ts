@@ -14,10 +14,14 @@ import { NotebookSetting } from '../../notebook/common/notebookCommon.js';
 import { CONTEXT_ACCESSIBILITY_MODE_ENABLED } from '../../../../platform/accessibility/common/accessibility.js';
 import { URI } from '../../../../base/common/uri.js';
 import product from '../../../../platform/product/common/product.js';
+import { HACKERCODE_AGENT_ADD_PROVIDER_COMMAND_ID } from '../../hackercodeAgent/common/hackerCodeAgentVendor.js';
 
 interface IGettingStartedContentProvider {
 	(): string;
 }
+
+/** The first page a new user sees should call the editor by its own name. */
+const productName = product.nameLong;
 
 const defaultChat = {
 	documentationUrl: product.defaultChatAgent?.documentationUrl ?? '',
@@ -225,26 +229,25 @@ export const startEntries: GettingStartedStartEntryContent = [
 
 const Button = (title: string, href: string) => `[${title}](${href})`;
 
-const CopilotStepTitle = localize('gettingStarted.copilotSetup.title', "Use AI features with Copilot for free");
-const CopilotDescription = localize({ key: 'gettingStarted.copilotSetup.description', comment: ['{Locked="["}', '{Locked="]({0})"}'] }, "You can use [Copilot]({0}) to generate code across multiple files, fix errors, ask questions about your code, and much more using natural language.", defaultChat.documentationUrl ?? '');
-const CopilotTermsString = localize({ key: 'gettingStarted.copilotSetup.terms', comment: ['{Locked="]({2})"}', '{Locked="]({3})"}'] }, "By continuing with {0} Copilot, you agree to {1}'s [Terms]({2}) and [Privacy Statement]({3})", defaultChat.provider.default.name, defaultChat.provider.default.name, defaultChat.termsStatementUrl, defaultChat.privacyStatementUrl);
-const CopilotAnonymousButton = Button(localize('setupCopilotButton.setup', "Use AI Features"), `command:workbench.action.chat.triggerSetupAnonymousWithoutDialog`);
-const CopilotSignedOutButton = Button(localize('setupCopilotButton.setup', "Use AI Features"), `command:workbench.action.chat.triggerSetup`);
-const CopilotSignedInButton = Button(localize('setupCopilotButton.setup', "Use AI Features"), `command:workbench.action.chat.triggerSetup`);
-const CopilotCompleteButton = Button(localize('setupCopilotButton.chatWithCopilot', "Start to Chat"), 'command:workbench.action.chat.open');
-
-function createCopilotSetupStep(id: string, button: string, when: string, includeTerms: boolean): BuiltinGettingStartedStep {
-	const description = includeTerms ?
-		`${CopilotDescription}\n${CopilotTermsString}\n${button}` :
-		`${CopilotDescription}\n${button}`;
-
+/**
+ * The chat step of the walkthrough.
+ *
+ * Upstream this is four variants of signing up for Copilot, gated on an
+ * entitlement this product does not have. Here the chat is built in and talks
+ * to whatever OpenAI-compatible endpoint the user configures, so the only
+ * thing a new user has to do is name one — which is what this step is for.
+ */
+function createChatSetupStep(): BuiltinGettingStartedStep {
 	return {
-		id,
-		title: CopilotStepTitle,
-		description,
-		when: `${when} && !chatSetupHidden && !chatSetupDisabledInWorkspace`,
+		id: 'HackerCodeChatSetup',
+		title: localize('gettingStarted.hackerCodeChat.title', "Connect a model and start chatting"),
+		description: [
+			localize('gettingStarted.hackerCodeChat.description', "The chat here runs against a model you bring: any OpenAI-compatible endpoint, from a hosted service to one running on this machine. Add a provider with its base URL and API key, then ask it to read, explain or change your code."),
+			Button(localize('gettingStarted.hackerCodeChat.addProvider', "Add Model Provider"), `command:${HACKERCODE_AGENT_ADD_PROVIDER_COMMAND_ID}`),
+			Button(localize('gettingStarted.hackerCodeChat.openChat', "Open Chat"), 'command:workbench.action.chat.open')
+		].join('\n'),
 		media: {
-			type: 'svg', altText: 'VS Code Copilot multi file edits', path: 'multi-file-edits.svg'
+			type: 'svg', altText: localize('gettingStarted.hackerCodeChat.altText', "Editing several files at once from chat"), path: 'multi-file-edits.svg'
 		},
 	};
 }
@@ -252,20 +255,17 @@ function createCopilotSetupStep(id: string, button: string, when: string, includ
 export const walkthroughs: GettingStartedWalkthroughContent = [
 	{
 		id: 'Setup',
-		title: localize('gettingStarted.setup.title', "Get started with VS Code"),
+		title: localize('gettingStarted.setup.title', "Get started with {0}", productName),
 		description: localize('gettingStarted.setup.description', "Customize your editor, learn the basics, and start coding"),
 		isFeatured: true,
 		icon: setupIcon,
 		when: '!isWeb',
-		walkthroughPageTitle: localize('gettingStarted.setup.walkthroughPageTitle', 'Setup VS Code'),
+		walkthroughPageTitle: localize('gettingStarted.setup.walkthroughPageTitle', 'Setup {0}', productName),
 		next: 'Beginner',
 		content: {
 			type: 'steps',
 			steps: [
-				createCopilotSetupStep('CopilotSetupAnonymous', CopilotAnonymousButton, 'chatAnonymous && !chatSetupCompleted', true),
-				createCopilotSetupStep('CopilotSetupSignedOut', CopilotSignedOutButton, 'chatEntitlementSignedOut && !chatAnonymous && !github.copilot.hasByokModels', false),
-				createCopilotSetupStep('CopilotSetupComplete', CopilotCompleteButton, 'chatSetupCompleted && !chatSetupDisabled && (chatAnonymous || chatPlanPro || chatPlanProPlus || chatPlanMax || chatPlanBusiness || chatPlanEnterprise || chatPlanFree)', false),
-				createCopilotSetupStep('CopilotSetupSignedIn', CopilotSignedInButton, '!chatEntitlementSignedOut && (!chatSetupCompleted || chatSetupDisabled || chatPlanCanSignUp)', false),
+				createChatSetupStep(),
 				{
 					id: 'pickColorTheme',
 					title: localize('gettingStarted.pickColor.title', "Choose your theme"),
@@ -277,10 +277,11 @@ export const walkthroughs: GettingStartedWalkthroughContent = [
 					media: { type: 'markdown', path: 'theme_picker', }
 				},
 				{
-					id: 'videoTutorial',
-					title: localize('gettingStarted.videoTutorial.title', "Watch video tutorials"),
-					description: localize('gettingStarted.videoTutorial.description.interpolated', "Watch the first in a series of short & practical video tutorials for VS Code's key features.\n{0}", Button(localize('watch', "Watch Tutorial"), 'https://aka.ms/vscode-getting-started-video')),
-					media: { type: 'svg', altText: 'VS Code Settings', path: 'learn.svg' },
+					id: 'openFolder',
+					title: localize('gettingStarted.openProject.title', "Open your project"),
+					description: localize('gettingStarted.openProject.description.interpolated', "Point the editor at a folder to get your files, search and source control working on it.\n{0}", Button(localize('openProjectButton', "Open Folder"), 'command:workbench.action.files.openFolder')),
+					completionEvents: ['onCommand:workbench.action.files.openFolder'],
+					media: { type: 'svg', altText: localize('gettingStarted.openProject.altText', "An open folder in the editor"), path: 'learn.svg' },
 				}
 			]
 		}

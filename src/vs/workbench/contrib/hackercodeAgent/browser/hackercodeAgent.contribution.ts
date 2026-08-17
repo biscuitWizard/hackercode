@@ -31,9 +31,9 @@ import { deleteHackerCodeAgentProviderApiKey, readHackerCodeAgentProviderApiKey,
 import { HackerCodeChatAgent } from './hackerCodeChatAgent.js';
 import { HackerCodeControlTool, HackerCodeToolData, HackerCodeToolId, isMutatingHackerCodeTool } from './hackerCodeAgentTools.js';
 import { HackerCodeCoreTool, HackerCodeCoreToolData, HackerCodeCoreToolId } from './hackerCodeCoreTools.js';
+import { HackerCodeEditTool, HackerCodeEditToolData, HackerCodeEditToolId } from './hackerCodeEditTools.js';
 import { HackerCodeExtensionTool, HackerCodeExtensionToolData, HackerCodeExtensionToolId } from './hackerCodeExtensionTools.js';
 import { HackerCodeLanguageModelProvider } from './hackerCodeLanguageModelProvider.js';
-import '../common/hackerCodeAgentConfiguration.js';
 
 /**
  * Wires the HackerCode agent into VS Code's built-in chat: the configured
@@ -86,7 +86,7 @@ class HackerCodeAgentContribution extends Disposable implements IWorkbenchContri
 			{
 				icon: ThemeIcon.fromId(Codicon.hubot.id),
 				description: localize('hackerCodeAgent.toolSet.description', "HackerCode"),
-				detail: localize('hackerCodeAgent.toolSet.detail', "Read the workspace and operate the HackerCode runtime patch control plane.")
+				detail: localize('hackerCodeAgent.toolSet.detail', "Read and edit the workspace, and operate the HackerCode runtime patch control plane.")
 			}
 		));
 		for (const data of HackerCodeToolData) {
@@ -102,6 +102,12 @@ class HackerCodeAgentContribution extends Disposable implements IWorkbenchContri
 			this._register(toolsService.registerTool(data, tool));
 			this._register(hackerCodeToolSet.addTool(data));
 			this._register(toolsService.readToolSet.addTool(data));
+		}
+		for (const data of HackerCodeEditToolData) {
+			const tool = this._register(instantiationService.createInstance(HackerCodeEditTool, data.id as HackerCodeEditToolId));
+			this._register(toolsService.registerTool(data, tool));
+			this._register(hackerCodeToolSet.addTool(data));
+			// Deliberately not in the read tool set: these write to the workspace.
 		}
 		for (const data of HackerCodeExtensionToolData) {
 			const tool = this._register(instantiationService.createInstance(HackerCodeExtensionTool, data.id as HackerCodeExtensionToolId));
